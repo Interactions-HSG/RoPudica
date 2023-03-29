@@ -1,0 +1,31 @@
+version: '3.9'
+
+services:
+  mqtt-broker:
+    container_name: mqtt-broker
+    image: eclipse-mosquitto
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto:/mosquitto/data
+      - ./mosquitto:/mosquitto/log
+    ports:
+      - 1883:1883
+      - 9001:9001
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana-oss:latest
+    ports:
+      - 3000:3000
+    environment:
+      - GF_INSTALL_PLUGINS=grafana-mqtt-datasource
+    depends_on:
+      - mqtt-broker
+  
+  heartrate-server:
+    container_name: heartrate-flask
+    image: heartrate-flask-docker
+    ports:
+      - 3476:5000
+    depends_on:
+      - mqtt-broker

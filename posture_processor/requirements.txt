@@ -1,0 +1,8 @@
+opencv-python>=4.7.0.0
+
+pyrealsense2; platform_system == "Windows" or platform_system == "Linux"
+pyrealsense2-macosx; platform_system == "Darwin"
+
+mediapipe; platform_system != "Darwin" or platform.machine != "arm64"
+mediapipe-silicon; platform_system == "Darwin" and platform.machine == "arm64"
+protobuf>=3.11,<4

@@ -1,0 +1,10 @@
+#general
+
+#heartrate_processor
+
+#posture_processor
+posture_processor/posture/
+
+#mosquitto
+/mosquitto/mosquitto.db
+/mosquitto/mosquitto.log
