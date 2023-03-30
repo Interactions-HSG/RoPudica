@@ -23,8 +23,7 @@ def index():
         attribute = data_split[0]
         value = data_split[-1]
 
-        if attribute == 'heartRate':
-            client.publish("debug/heartrate", value)
+        client.publish("debug/heartrate", value)
     return ''
 
 if __name__ == '__main__':

@@ -21,6 +21,8 @@ services:
       - GF_INSTALL_PLUGINS=grafana-mqtt-datasource
     depends_on:
       - mqtt-broker
+    volumes:
+      - grafana-storage:/var/lib/grafana
   
   heartrate-server:
     container_name: heartrate-flask
@@ -29,3 +31,7 @@ services:
       - 3476:5000
     depends_on:
       - mqtt-broker
+
+volumes:
+  grafana-storage: 
+    external: true
