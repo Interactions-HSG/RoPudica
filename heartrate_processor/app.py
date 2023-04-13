@@ -1,5 +1,9 @@
 from flask import Flask, request
 import paho.mqtt.client as mqtt
+import time
+import pandas as pd
+
+df = pd.DataFrame(columns=['time', 'heartrate'])
 
 app = Flask(__name__)
 
@@ -17,13 +21,26 @@ client.connect(broker,port)
 @app.route('/', methods = ['PUT'])
 def index():
     if request.json:
+        received_date = time.time()
         data_string = request.json['data']
         data_split = data_string.split(':', 1)
         
         attribute = data_split[0]
-        value = data_split[-1]
+        value = int(data_split[-1])
+        
+        if attribute == 'heartRate':
+            if len(df) > 3: # only calculate if we have at least 3 values in df
+                last_60_seconds = df[df['time'] > received_date - 60]
+                mean = last_60_seconds['heartrate'].mean()
+                std_dev = last_60_seconds['heartrate'].std()
+                
+                distance = (mean - value) / std_dev
+                client.publish("heartrate/deviation", distance)
 
-        client.publish("debug/heartrate", value)
+
+            df.loc[len(df)] = [received_date, value]
+
+        client.publish("heartrate/debug/"+attribute, value)
     return ''
 
 if __name__ == '__main__':
