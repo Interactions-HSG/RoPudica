@@ -7,6 +7,23 @@ There are multiple components, that make up the architecture and this is edited 
 
 Taking in data from an Apple Watch and processing it. Build the docker image with `docker build --tag heartrate-flask-docker .` so that it can be used by the docker compose file.
 
+## linkedin_scraping
+
+Receiving an operator name via HTTP and responds with LinkedIn information and a score on how experienced the operator might have been with industrial robots.  
+It requires a _.env_ file in the _/linkedin_scraping_ directory which includes the attributes `LINKEDIN_USERNAME` and `LINKEDIN_PASSWORD`.
+
+Example:
+
+```http request
+GET: http://localhost:5000/linkedInScore
+BODY:
+    {
+        "operator": "Kay Erik Jenß"
+    }
+```
+
+Build the docker image with `docker build --tag linkedin-scraping-flask-docker .` so that it can be used by the docker compose file. This does not use the slim pre-bruilt image, as it requires a pap dependency to be installed directly from git, which is not included in the slim image.
+
 ## posture_processor
 
 Using a Intel RealSense camera to reason on the operators pose
