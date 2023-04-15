@@ -5,6 +5,8 @@
 
 #posture_processor
 posture_processor/posture/
+posture_processor/*.csv
+posture_processor/*.pkl
 
 #mosquitto
 /mosquitto/mosquitto.db

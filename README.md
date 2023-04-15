@@ -35,7 +35,7 @@ python3.9 -m venv posture
 source posture/bin/activate
 pip install -r requirements.txt
 #run the script with sudo privilege
-sudo python3 posture_test.py
+sudo python3 posture.py
 ```
 
 ## mosquitto
