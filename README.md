@@ -10,7 +10,7 @@ Taking in data from an Apple Watch and processing it. Build the docker image wit
 ## linkedin_scraping
 
 Receiving an operator name via HTTP and responds with LinkedIn information and a score on how experienced the operator might have been with industrial robots.  
-It requires a _.env_ file in the _/linkedin_scraping_ directory which includes the attributes `LINKEDIN_USERNAME` and `LINKEDIN_PASSWORD`.
+It requires a _.env_ file in the _/linkedin_scraping_ directory which includes the attributes `LINKEDIN_USERNAME`, `LINKEDIN_PASSWORD` and `OPENAI_KEY`.
 
 Example:
 
@@ -22,7 +22,7 @@ BODY:
     }
 ```
 
-Build the docker image with `docker build --tag linkedin-scraping-flask-docker .` so that it can be used by the docker compose file. This does not use the slim pre-bruilt image, as it requires a pap dependency to be installed directly from git, which is not included in the slim image.
+Build the docker image with `docker build --tag linkedin-scraping-flask-docker .` so that it can be used by the docker compose file. This does not use the slim pre-bruilt image, as it requires a pip dependency to be installed directly from git, which is not included in the slim image.
 
 ## posture_processor
 
