@@ -7,8 +7,12 @@ import datetime as dt
 import pandas as pd
 import pickle
 
-with open('body_language.pkl', 'rb') as f:
-    model = pickle.load(f)
+RUN_DETECTIONS = False
+DRAW_LANDMARKS = True
+
+if RUN_DETECTIONS:
+    with open('body_language.pkl', 'rb') as f:
+        model = pickle.load(f)
 
 def get_distance(results, landmark_index):
     landmark = results.pose_landmarks.landmark[landmark_index]
@@ -19,6 +23,42 @@ def get_distance(results, landmark_index):
     if y >= len(depth_image_flipped):
         y = len(depth_image_flipped) - 1
     return depth_image_flipped[y,x] * depth_scale
+
+def run_posture_detections(results, images):
+    # Extract Pose landmarks
+    pose = results.pose_landmarks.landmark
+    pose_row = list(np.array([[landmark.x, landmark.y, landmark.z, landmark.visibility] for landmark in pose]).flatten())
+    
+    # Extract Face landmarks
+    face = results.face_landmarks.landmark
+    face_row = list(np.array([[landmark.x, landmark.y, landmark.z, landmark.visibility] for landmark in face]).flatten())
+    
+    # Concate rows
+    row = pose_row+face_row
+    # Make Detections
+    X = pd.DataFrame([row])
+    body_language_class = model.predict(X)[0]
+    body_language_prob = model.predict_proba(X)[0]
+    print(body_language_class, body_language_prob)
+    prediction_coords = (20, org[1] - 40)
+    return cv2.putText(images, body_language_class, prediction_coords, font, fontScale, color, thickness, cv2.LINE_AA)
+
+def draw_landmarks(results, images):
+    LANDMARKS_OF_INTEREST = {
+        "Nose": 0,
+        "lShoulder": 11,
+        "rShoulder": 12,
+        "lArm": 16, #using wrist as arm indicator
+        "rArm": 15, #using wrist as arm indicator
+    }
+
+    i = 1
+    for name, landmark_id in LANDMARKS_OF_INTEREST.items():
+        org_landmarks = (20, org[1]+(20*(i+1)))
+        i += 1
+        distance = get_distance(results, landmark_id)
+        images = cv2.putText(images, f"{name} Distance: {distance:0.3} m away", org_landmarks, font, fontScale, color, thickness, cv2.LINE_AA)
+    return images
 
 font = cv2.FONT_HERSHEY_SIMPLEX
 org = (20, 100)
@@ -108,36 +148,11 @@ with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=
                                     mp_drawing.DrawingSpec(color=(245,66,230), thickness=2, circle_radius=2)
                                     )
             
-            # Extract Pose landmarks
-            pose = results.pose_landmarks.landmark
-            pose_row = list(np.array([[landmark.x, landmark.y, landmark.z, landmark.visibility] for landmark in pose]).flatten())
-            
-            # Extract Face landmarks
-            face = results.face_landmarks.landmark
-            face_row = list(np.array([[landmark.x, landmark.y, landmark.z, landmark.visibility] for landmark in face]).flatten())
-            
-            # Concate rows
-            row = pose_row+face_row
-            # Make Detections
-            X = pd.DataFrame([row])
-            body_language_class = model.predict(X)[0]
-            body_language_prob = model.predict_proba(X)[0]
-            print(body_language_class, body_language_prob)
-            prediction_coords = (20, org[1] - 40)
-            images = cv2.putText(images, body_language_class, prediction_coords, font, fontScale, color, thickness, cv2.LINE_AA)
+            if RUN_DETECTIONS:
+                images = run_posture_detections(results, images)
 
-            LANDMARKS_OF_INTEREST = {
-            "Nose": 0,
-            "lArm": 16, #using wrist as arm indicator
-            "rArm": 15, #using wrist as arm indicator
-            }
-
-            i = 1
-            for name, landmark_id in LANDMARKS_OF_INTEREST.items():
-                org_landmarks = (20, org[1]+(20*(i+1)))
-                i += 1
-                distance = get_distance(results, landmark_id)
-                images = cv2.putText(images, f"{name} Distance: {distance:0.3} m away", org_landmarks, font, fontScale, color, thickness, cv2.LINE_AA)
+            if DRAW_LANDMARKS:
+                images = draw_landmarks(results, images)
             
             images = cv2.putText(images, f"Operator: ", org, font, fontScale, color, thickness, cv2.LINE_AA)
         else:
