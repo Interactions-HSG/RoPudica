@@ -6,15 +6,21 @@ import numpy as np
 import datetime as dt
 import pandas as pd
 import pickle
+import requests
 
 RUN_DETECTIONS = False
 DRAW_LANDMARKS = True
+
+CONSIDER_ROBOT_POSITION = True
+CAMERA_OFFSET = 1030 # mm the camera is offset from the robot
+ROBOT_POSITION_REQUEST_OFFSET = 1 # Number of frames to wait before requesting robot position
+ROBOT_POSITION_ROUTE = 'http://127.0.0.1:5000/position'
 
 if RUN_DETECTIONS:
     with open('body_language.pkl', 'rb') as f:
         model = pickle.load(f)
 
-def get_distance(results, landmark_index):
+def get_landmark_distance(results, landmark_index):
     landmark = results.pose_landmarks.landmark[landmark_index]
     x = int(landmark.x*len(depth_image_flipped[0]))
     y = int(landmark.y*len(depth_image_flipped))
@@ -23,6 +29,18 @@ def get_distance(results, landmark_index):
     if y >= len(depth_image_flipped):
         y = len(depth_image_flipped) - 1
     return depth_image_flipped[y,x] * depth_scale
+
+def get_arm_position():
+    response = requests.get(ROBOT_POSITION_ROUTE)
+    return response.json()
+
+def process_proxemics(results, robot_position):
+    lShoulder_distance = get_landmark_distance(results, 11)
+    rShoulder_distance = get_landmark_distance(results, 12)
+    operator_distance = (lShoulder_distance + rShoulder_distance) / 2 # middle of shoulders
+    operator_distance = operator_distance * 1000 # convert to mm
+
+    return operator_distance - CAMERA_OFFSET - robot_position['x']
 
 def run_posture_detections(results, images):
     # Extract Pose landmarks
@@ -56,7 +74,7 @@ def draw_landmarks(results, images):
     for name, landmark_id in LANDMARKS_OF_INTEREST.items():
         org_landmarks = (20, org[1]+(20*(i+1)))
         i += 1
-        distance = get_distance(results, landmark_id)
+        distance = get_landmark_distance(results, landmark_id)
         images = cv2.putText(images, f"{name} Distance: {distance:0.3} m away", org_landmarks, font, fontScale, color, thickness, cv2.LINE_AA)
     return images
 
@@ -102,12 +120,13 @@ depth_scale = depth_sensor.get_depth_scale()
 print(f"\tDepth Scale for Camera SN {device} is: {depth_scale}")
 
 # ====== Set clipping distance ======
-clipping_distance_in_meters = 2
+clipping_distance_in_meters = 3
 clipping_distance = clipping_distance_in_meters / depth_scale
 print(f"\tConfiguration Successful for SN {device}")
 
 # ====== Get and process images ====== 
 print(f"Starting to capture images on SN: {device}")
+processed_images = 0
 with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
     while True:
         start_time = dt.datetime.today().timestamp()
@@ -153,7 +172,14 @@ with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=
 
             if DRAW_LANDMARKS:
                 images = draw_landmarks(results, images)
+
+            if CONSIDER_ROBOT_POSITION:
+                if processed_images % ROBOT_POSITION_REQUEST_OFFSET == 0:
+                    robot_position = get_arm_position()
+                    print(robot_position)
+                print(process_proxemics(results, robot_position))
             
+            processed_images += 1
             images = cv2.putText(images, f"Operator: ", org, font, fontScale, color, thickness, cv2.LINE_AA)
         else:
             images = cv2.putText(images,"No Operator", org, font, fontScale, color, thickness, cv2.LINE_AA)

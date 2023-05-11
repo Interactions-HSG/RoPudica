@@ -1,6 +1,7 @@
 opencv-python>=4.7.0.0
 scikit-learn
 pandas
+requests
 
 pyrealsense2; platform_system == "Windows" or platform_system == "Linux"
 pyrealsense2-macosx; platform_system == "Darwin"
