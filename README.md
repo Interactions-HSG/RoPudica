@@ -55,6 +55,6 @@ _Grafana auth:_
 
 ## robot_controller
 
-Allowing routes to controll teh workflow of the Robot (xArm 7).
+Allowing routes to controll the workflow of the Robot (xArm 7).
 It requires a _.env_ file in the _/robot_controller_ directory which includes the `ROBOT_IP` attribute.  
 Build the docker image with `docker build --tag robot-controller .` so that it can be used by the docker compose file.

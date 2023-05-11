@@ -11,16 +11,17 @@ app = Flask(__name__)
 
 ROBOT_IP = os.getenv('ROBOT_IP')
 
-# Speed dicts
-SLOW_MOVEMENT = {
-    "angle_speed": 40,
-    "angle_acc": 400,
-}
-FAST_MOVEMENT = {
-    "angle_speed": 100,
-    "angle_acc": 800,
-}
+# Speed values
+MIN_ANGLE_SPEED = 40
+MAX_ANGLE_SPEED = 100
 
+MIN_ANGLE_ACC = 400
+MAX_ANGLE_ACC = 800
+
+SPEED_STEPS = 10
+START_SPEED = 5     # Can be retrieved from LinkedIn component in the future
+ANGLE_SPEED_INCREMENT = (MAX_ANGLE_SPEED-MIN_ANGLE_SPEED)/SPEED_STEPS
+ANGLE_ACC_INCREMENT = (MAX_ANGLE_ACC-MIN_ANGLE_ACC)/SPEED_STEPS
 
 class RobotMain(object):
     """Robot Main Class"""
@@ -34,7 +35,8 @@ class RobotMain(object):
         self._angle_acc = 500
         self._vars = {}
         self._funcs = {}
-        self._speed_adjustments = []
+        self._current_speed = 0
+        self._speed_adjustment = START_SPEED
         self._robot_init()
 
     # Robot init
@@ -130,11 +132,14 @@ class RobotMain(object):
             return False
 
     def adjust_speed(self):
-        if len(self._speed_adjustments) > 0:
-            print("Adjusting speed")
-            adjustment = self._speed_adjustments.pop(0)
-            self._angle_speed = adjustment.get("angle_speed", self._angle_speed)
-            self._angle_acc = adjustment.get("angle_acc", self._angle_acc)
+        if self._current_speed != self._speed_adjustment:
+            angle_speed = MIN_ANGLE_SPEED + (self._speed_adjustment * ANGLE_SPEED_INCREMENT)
+            angle_speed = min([max([angle_speed, MIN_ANGLE_SPEED]), MAX_ANGLE_SPEED])
+            self._angle_speed = angle_speed
+            angle_acc = MAX_ANGLE_ACC + (self._speed_adjustment * ANGLE_ACC_INCREMENT)
+            angle_acc = min([max([angle_acc, MIN_ANGLE_ACC]), MAX_ANGLE_ACC])
+            self._angle_acc = angle_acc
+            self._current_speed = self._speed_adjustment
 
     def set_position(self, angle):
         self.adjust_speed()
@@ -167,30 +172,23 @@ class RobotMain(object):
         if not self._check_code(code, "set_servo_angle"):
             return
 
-    def run_iteration(self, repeat=1, speed_dict=None):
+    def run_iteration(self, repeat=1):
         for i in range(int(repeat)):
             if not self.is_alive:
                 break
-            self._angle_speed = speed_dict["angle_speed"]
-            self._angle_acc = speed_dict["angle_acc"]
             self.procedure()
 
-    def add_speed_adjustment(self, speed_dict):
-        self._speed_adjustments.append(speed_dict)
+    def set_speed_adjustment(self, speed_adjustment):
+        self._speed_adjustment = speed_adjustment
 
     # Robot Main Run
     def remote_run(self, repeat):
         try:
-            self._angle_speed = 40
-            self._angle_acc = 400
-            for i in range(int(repeat)):
-                if not self.is_alive:
-                    break
-                self.procedure()
+            # run x iterations
+            self.run_iteration(repeat)
 
         except Exception as e:
             self.pprint("MainException: {}".format(e))
-        # self.alive = False
         self._arm.release_error_warn_changed_callback(self._error_warn_changed_callback)
         self._arm.release_state_changed_callback(self._state_changed_callback)
         if hasattr(self._arm, "release_count_changed_callback"):
@@ -208,24 +206,34 @@ def run_robot():
     robot_main.remote_run(iterations)
     return "Started running the robot!"
 
-
-@app.route("/speed", methods=["POST"])
-def speed():
-    robot_main.add_speed_adjustment(FAST_MOVEMENT)
+@app.route("/fast", methods=["POST"])
+def fast():
+    robot_main.set_speed_adjustment(10)
     return "I am speed!"
-
 
 @app.route("/slow", methods=["POST"])
 def slow():
-    robot_main.add_speed_adjustment(SLOW_MOVEMENT)
+    robot_main.set_speed_adjustment(0)
     return "I am slooooow!"
-
 
 @app.route("/stop", methods=["POST"])
 def stop_robot():
     robot_main._arm.emergency_stop()
     return "Emergency stopped the robot!"
 
+@app.route("/position", methods=["GET"])
+def get_robot_position():
+    position = robot_main._arm.get_position()[1]
+    return {"x": position[0], "y": position[1], "z": position[2]}
+
+@app.route("/speed", methods=["POST"])
+def speed():
+    multiplier = request.args.get("multiplier", default=0, type=int)
+    if multiplier >= 0 and multiplier <= 10:
+        robot_main.set_speed_adjustment(multiplier)
+        return "Adjusted speed from " + str(robot_main._current_speed) + " to " + str(multiplier)
+    else:
+        return "Invalid speed adjustment"
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port="5000")
