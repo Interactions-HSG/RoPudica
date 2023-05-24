@@ -38,6 +38,21 @@ pip install -r requirements.txt
 sudo python3 posture.py
 ```
 
+## pupil_processor
+
+Using the Pupil Labs eye tracker to track changes in the operators pupil size
+
+_How to run from within the pupil processor directory:_
+
+```bash
+python3.9 -m venv pupil
+source pupil/bin/activate
+pip install -r requirements.txt
+python3 processor.py
+```
+
+Make sure, that the Pupil Labs Capture Software is running and the eye tracker is connected. On Mac OS, the Pupil Labs Capture Software needs to be started with sudo privileges (e.g. `sudo /Applications/Pupil\ Capture.app/Contents/MacOS/pupil_capture`).
+
 ## mosquitto
 
 A MQTT broker used for debugging at the moment in combination with a Grafana dashboard.

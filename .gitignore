@@ -11,3 +11,6 @@ posture_processor/*.pkl
 #mosquitto
 /mosquitto/mosquitto.db
 /mosquitto/mosquitto.log
+
+#pupil_processor
+/pupil_processor/pupil/
