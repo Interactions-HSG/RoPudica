@@ -14,3 +14,4 @@ posture_processor/*.pkl
 
 #pupil_processor
 /pupil_processor/pupil/
+/pupil_processor/pupil.csv
