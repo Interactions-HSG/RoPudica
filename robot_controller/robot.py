@@ -17,16 +17,16 @@ ANGLE_ACC_INCREMENT = (MAX_ANGLE_ACC-MIN_ANGLE_ACC)/SPEED_STEPS
 
 START_PROXEMICS = 7 # Can be retrieved from LinkedIn component in the future
 PROXEMICS_ANGLES = [
-    [2.0, -59.4, 1.6, 22.0, 0.6, 79.6, 1.9],
-    [1.5, -46.0, 1.5, 27.7, 0.3, 71.9, 1.6],
-    [1.1, -33.6, 1.4, 34.9, 0.0, 66.7, 1.4],
-    [0.8, -22.4, 1.4, 43.1, -0.3, 63.7, 1.3],
-    [0.6, -12.2, 1.3, 52.2, -0.6, 62.6, 1.3],
-    [0.6, -2.3, 1.2, 62.6, -0.8, 63.1, 1.3],
-    [0.8, 7.6, 0.9, 74.4, -1.0, 65.0, 1.2],
-    [0.9, 17.9, 0.6, 88.1, -1.0, 68.4, 1.1],
-    [1.2, 29.4, 0.2, 104.9, -0.9, 73.8, 0.8],
-    [1.3, 44.5, 0.0, 129.4, -0.7, 83.2, 0.5]
+    {"angles": [2.0, -59.4, 1.6, 22.0, 0.6, 79.6, 1.9], "x_extension": 209},
+    {"angles": [1.5, -46.0, 1.5, 27.7, 0.3, 71.9, 1.6], "x_extension": 261},
+    {"angles": [1.1, -33.6, 1.4, 34.9, 0.0, 66.7, 1.4], "x_extension": 312},
+    {"angles": [0.8, -22.4, 1.4, 43.1, -0.3, 63.7, 1.3], "x_extension": 364},
+    {"angles": [0.6, -12.2, 1.3, 52.2, -0.6, 62.6, 1.3], "x_extension": 416},
+    {"angles": [0.6, -2.3, 1.2, 62.6, -0.8, 63.1, 1.3], "x_extension": 468},
+    {"angles": [0.8, 7.6, 0.9, 74.4, -1.0, 65.0, 1.2], "x_extension": 520},
+    {"angles": [0.9, 17.9, 0.6, 88.1, -1.0, 68.4, 1.1], "x_extension": 572},
+    {"angles": [1.2, 29.4, 0.2, 104.9, -0.9, 73.8, 0.8], "x_extension": 624},
+    {"angles": [1.3, 44.5, 0.0, 129.4, -0.7, 83.2, 0.5], "x_extension": 676}
 ]
 
 class RobotMain(object):
@@ -140,6 +140,9 @@ class RobotMain(object):
         else:
             return False
         
+    def get_max_x_extension(self):
+        return PROXEMICS_ANGLES[self._current_proxemics-1]["x_extension"]
+        
     def set_angle_values(self, angle_speed=None, angle_acc=None):
         if angle_speed is not None:
             self._angle_speed = angle_speed
@@ -165,7 +168,7 @@ class RobotMain(object):
 
     def procedure(self):
         set_position(self, [-83.2, 24.0, -0.5, 66.1, -3.9, 40.3, -84.3])
-        set_position(self, PROXEMICS_ANGLES[self._current_proxemics-1])
+        set_position(self, PROXEMICS_ANGLES[self._current_proxemics-1]["angles"])
         set_position(self, [55.7, 19.5, 29.0, 56.9, -17.1, 41.4, 95.7])
         set_position(self, [2.1, -79.5, -6.5, -3.1, -7.3, 74.6, 1.9])
         set_position(self, [-83.2, 24.0, -0.5, 66.1, -3.9, 40.3, -84.3])

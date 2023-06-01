@@ -12,9 +12,9 @@ RUN_DETECTIONS = False
 DRAW_LANDMARKS = True
 
 CONSIDER_ROBOT_POSITION = True
-CAMERA_OFFSET = 1030 # mm the camera is offset from the robot
+CAMERA_OFFSET = 600 # mm the camera is offset from the robot
 ROBOT_POSITION_REQUEST_OFFSET = 1 # Number of frames to wait before requesting robot position
-ROBOT_POSITION_ROUTE = 'http://127.0.0.1:5000/position'
+ROBOT_CONTROLLER_BASE = 'http://127.0.0.1:5000/'
 
 if RUN_DETECTIONS:
     with open('body_language.pkl', 'rb') as f:
@@ -30,17 +30,18 @@ def get_landmark_distance(results, landmark_index):
         y = len(depth_image_flipped) - 1
     return depth_image_flipped[y,x] * depth_scale
 
-def get_arm_position():
-    response = requests.get(ROBOT_POSITION_ROUTE)
+def get_arm_max_extension():
+    # instead of getting the exact position of the robot, we are retrieving the current maximum extension on the x axis
+    response = requests.get(ROBOT_CONTROLLER_BASE + "/extension")
     return response.json()
 
-def process_proxemics(results, robot_position):
+def process_proxemics(results, robot_extension):
     lShoulder_distance = get_landmark_distance(results, 11)
     rShoulder_distance = get_landmark_distance(results, 12)
     operator_distance = (lShoulder_distance + rShoulder_distance) / 2 # middle of shoulders
     operator_distance = operator_distance * 1000 # convert to mm
 
-    return operator_distance - CAMERA_OFFSET - robot_position['x']
+    return operator_distance - CAMERA_OFFSET - robot_extension['x']
 
 def run_posture_detections(results, images):
     # Extract Pose landmarks
@@ -175,9 +176,15 @@ with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=
 
             if CONSIDER_ROBOT_POSITION:
                 if processed_images % ROBOT_POSITION_REQUEST_OFFSET == 0:
-                    robot_position = get_arm_position()
-                    print(robot_position)
-                print(process_proxemics(results, robot_position))
+                    max_extension = get_arm_max_extension()
+                    print(max_extension)
+                distance = process_proxemics(results, max_extension)
+                if distance > 700:
+                    # increase proxemics
+                    response = requests.post(ROBOT_CONTROLLER_BASE + "/increase_proxemics")
+                if distance < 700:
+                    # decrease proxemics
+                    response = requests.post(ROBOT_CONTROLLER_BASE + "/decrease_proxemics")
             
             processed_images += 1
             images = cv2.putText(images, f"Operator: ", org, font, fontScale, color, thickness, cv2.LINE_AA)

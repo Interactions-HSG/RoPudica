@@ -40,6 +40,10 @@ def get_robot_position():
     position = robot_main._arm.get_position()[1]
     return {"x": position[0], "y": position[1], "z": position[2]}
 
+@app.route("/extension", methods=["GET"])
+def get_extension():
+    return {"x": robot_main.get_max_x_extension()}
+
 @app.route("/episodic_behaviour", methods=["POST"])
 def episodic_behaviour():
     robot_main._episodic_trigger = True
@@ -57,11 +61,23 @@ def speed():
 @app.route("/proxemics", methods=["POST"])
 def proxemics():
     multiplier = request.args.get("multiplier", default=0, type=int)
-    if multiplier >= 0 and multiplier <= 10:
+    if multiplier >= 1 and multiplier <= 10:
         changes = robot_main.adjust_proxemics(multiplier)
         return "Adjusted speed from " + str(changes["old"]) + " to " + str(changes["new"])
     else:
         return "Invalid speed adjustment"
+    
+@app.route("/increase_proxemics", methods=["POST"])
+def increase_proxemics():
+    current = robot_main._current_proxemics
+    changes = robot_main.adjust_proxemics(min(current + 1, 10))
+    return "Increased speed from " + str(changes["old"]) + " to " + str(changes["new"])
+    
+@app.route("/decrease_proxemics", methods=["POST"])
+def decrease_proxemics():
+    current = robot_main._current_proxemics
+    changes = robot_main.adjust_proxemics(max(current - 1, 1))
+    return "Increased speed from " + str(changes["old"]) + " to " + str(changes["new"])
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port="5000")
