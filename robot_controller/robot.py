@@ -15,6 +15,20 @@ START_SPEED = 5     # Can be retrieved from LinkedIn component in the future
 ANGLE_SPEED_INCREMENT = (MAX_ANGLE_SPEED-MIN_ANGLE_SPEED)/SPEED_STEPS
 ANGLE_ACC_INCREMENT = (MAX_ANGLE_ACC-MIN_ANGLE_ACC)/SPEED_STEPS
 
+START_PROXEMICS = 7 # Can be retrieved from LinkedIn component in the future
+PROXEMICS_ANGLES = [
+    [2.0, -59.4, 1.6, 22.0, 0.6, 79.6, 1.9],
+    [1.5, -46.0, 1.5, 27.7, 0.3, 71.9, 1.6],
+    [1.1, -33.6, 1.4, 34.9, 0.0, 66.7, 1.4],
+    [0.8, -22.4, 1.4, 43.1, -0.3, 63.7, 1.3],
+    [0.6, -12.2, 1.3, 52.2, -0.6, 62.6, 1.3],
+    [0.6, -2.3, 1.2, 62.6, -0.8, 63.1, 1.3],
+    [0.8, 7.6, 0.9, 74.4, -1.0, 65.0, 1.2],
+    [0.9, 17.9, 0.6, 88.1, -1.0, 68.4, 1.1],
+    [1.2, 29.4, 0.2, 104.9, -0.9, 73.8, 0.8],
+    [1.3, 44.5, 0.0, 129.4, -0.7, 83.2, 0.5]
+]
+
 class RobotMain(object):
     """Robot Main Class"""
 
@@ -30,6 +44,7 @@ class RobotMain(object):
         self._speed_reactive = True
         self._current_speed = 0
         self._speed_adjustment = START_SPEED
+        self._current_proxemics = START_PROXEMICS
         self._episodic_trigger = False
         self._robot_init()
 
@@ -139,10 +154,18 @@ class RobotMain(object):
             angle_acc = min([max([angle_acc, MIN_ANGLE_ACC]), MAX_ANGLE_ACC])
             self.set_angle_values(angle_speed, angle_acc)
             self._current_speed = self._speed_adjustment
+        
+    def adjust_proxemics(self, new_proxemics):
+        if self._current_proxemics == new_proxemics:
+            return {"old": self._current_proxemics, "new": new_proxemics}
+        old = self._current_proxemics
+        self._current_proxemics = new_proxemics
+        return {"old": old, "new": new_proxemics}
+        
 
     def procedure(self):
         set_position(self, [-83.2, 24.0, -0.5, 66.1, -3.9, 40.3, -84.3])
-        set_position(self, [-19.3, 4.9, 21.7, 70.7, -2.8, 64.3, 2.7])
+        set_position(self, PROXEMICS_ANGLES[self._current_proxemics-1])
         set_position(self, [55.7, 19.5, 29.0, 56.9, -17.1, 41.4, 95.7])
         set_position(self, [2.1, -79.5, -6.5, -3.1, -7.3, 74.6, 1.9])
         set_position(self, [-83.2, 24.0, -0.5, 66.1, -3.9, 40.3, -84.3])

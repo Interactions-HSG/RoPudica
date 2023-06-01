@@ -54,5 +54,14 @@ def speed():
     else:
         return "Invalid speed adjustment"
 
+@app.route("/proxemics", methods=["POST"])
+def proxemics():
+    multiplier = request.args.get("multiplier", default=0, type=int)
+    if multiplier >= 0 and multiplier <= 10:
+        changes = robot_main.adjust_proxemics(multiplier)
+        return "Adjusted speed from " + str(changes["old"]) + " to " + str(changes["new"])
+    else:
+        return "Invalid speed adjustment"
+
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port="5000")
