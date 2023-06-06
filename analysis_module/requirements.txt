@@ -1,0 +1,4 @@
+paho-mqtt>=1.6.1
+pandas>=2.0.0
+trend-classifier
+requests

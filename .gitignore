@@ -1,5 +1,6 @@
 #general
 .env
+*/__pycache__/
 
 #heartrate_processor
 
@@ -15,3 +16,6 @@ posture_processor/*.pkl
 #pupil_processor
 /pupil_processor/pupil/
 /pupil_processor/pupil.csv
+
+#analysis_module
+/analysis_module/analysis/
