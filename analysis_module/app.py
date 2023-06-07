@@ -2,45 +2,80 @@ import json
 import paho.mqtt.client as mqtt
 from modality import Modality
 from producer import Producer
+from datetime import datetime, timedelta
 import pandas as pd
 import sched, time
 
 ANALYSIS_INTERVAL = 3  # seconds
+ROBOT_CONTROLLER_URL = "http://localhost:5000"
 
-PRODUCERS = []
+PRODUCERS = [
+    Producer(
+        "pupil",
+        analysis_interval=0.5,
+        threshold=0.001,
+        handler="_handle_trend",
+        output_modalities=["speed"],
+        weight=1.0,
+    ),
+]
 PRODUCER_MAP = {producer.subscription_topic: producer for producer in PRODUCERS}
 
-MODLITIES = []
-MODALITIES_MAP = {modality.name: modality for modality in MODLITIES}
-MODALITY_THRESHOLD = 0.5
+MODALITIES = [
+    Modality(
+        "speed",
+        threshold=0.1,
+        base_url=ROBOT_CONTROLLER_URL,
+        increase_path="/increase_speed",
+        decrease_path="/decrease_speed",
+    ),
+    Modality(
+        "proxemics",
+        threshold=0.1,
+        base_url=ROBOT_CONTROLLER_URL,
+        increase_path="/increase_proxemics",
+        decrease_path="/decrease_proxemics",
+    ),
+]
+MODALITIES_MAP = {modality.name: modality for modality in MODALITIES}
 
 df = pd.DataFrame(columns=["time", "output_modality", "value"])
 
-MQTT_BROKER = "mqtt-broker"
+MQTT_BROKER = "localhost"
 MQTT_PORT = 1883
 
 
 def analyse_signals(scheduler):
+    global df
     scheduler.enter(ANALYSIS_INTERVAL, 1, analyse_signals, (scheduler,))
 
-    analysis_interval = df[df["time"] > time.time() - ANALYSIS_INTERVAL]
-    grouped = analysis_interval.groupby("output_modality").sum()
+    analysis_interval = df.last(pd.Timedelta(seconds=ANALYSIS_INTERVAL))
+    grouped = (
+        analysis_interval[["output_modality", "value"]]
+        .groupby("output_modality")
+        .mean()
+    )
 
+    print(grouped)
     for index, row in grouped.iterrows():
-        modality = MODALITIES_MAP[index]
-        if row["value"] > MODALITY_THRESHOLD:
+        modality = MODALITIES_MAP.get(index, None)
+        if not modality:
+            continue
+        if row["value"] > modality.threshold:
             modality.increase()
-        elif row["value"] < -MODALITY_THRESHOLD:
+        elif row["value"] < -modality.threshold:
             modality.decrease()
         else:
             modality.neutral()
 
 
 def on_message(client, userdata, msg):
+    global df
     producer = PRODUCER_MAP.get(msg.topic)
     if producer:
         value = producer.handle(json.loads(msg.payload))
-        df = pd.concat([df, value], ignore_index=True)
+        # print(value)
+        df = pd.concat([df, value]) if df is not None else value
 
 
 def connect_mqtt():

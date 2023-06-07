@@ -1,5 +1,6 @@
 import pandas as pd
 import paho.mqtt.client as mqtt
+import warnings
 
 from datetime import datetime, timedelta
 from trend_classifier import Segmenter
@@ -19,12 +20,14 @@ class Producer(object):
         handler: str | function,
         output_modalities: list[ModalityLiteral],
         weight: float = 1.0,
-        **kwargs
+        **kwargs,
     ):
         if len(output_modalities) == 0:
             raise ValueError("At least one output modality must be specified")
         self.subscription_topic = subscription_topic
-        self._data = pd.DataFrame(columns=["time", "value"])
+        self._data = pd.DataFrame(
+            columns=["value"], index=pd.DatetimeIndex(name="timestamp", data=[])
+        )
         self._analysis_interval = analysis_interval
         self._threshold = threshold
         self._handler = Producer.match_function(handler)
@@ -43,14 +46,16 @@ class Producer(object):
             )
 
     def handle(self, data: dict):
-        self._data = pd.concat([self._data, pd.DataFrame([data])], ignore_index=True)
+        new_df = pd.DataFrame.from_dict([data])
+        new_df.set_index(
+            pd.DatetimeIndex(data=new_df["timestamp"], name="timestamp"), inplace=True
+        )
+        new_df.drop(columns=["timestamp", "id"], inplace=True)
 
-        df = self._data[
-            self._data["time"]
-            > datetime.now() - timedelta(seconds=self._analysis_interval)
-        ]
+        temp_df = pd.concat([self._data, new_df])
+        self._data = temp_df.last(pd.Timedelta(seconds=self._analysis_interval))
 
-        value = self._handler(df, self._threshold)
+        value = self._handler(self._data, self._threshold)
         outputs = []
         for modality in self._modalities:
             outputs.append(
@@ -61,7 +66,15 @@ class Producer(object):
                 }
             )
 
-        return pd.DataFrame.from_dict(outputs)
+        return (
+            pd.DataFrame.from_dict(outputs)
+            .set_index(
+                pd.DatetimeIndex(
+                    name="time", data=[output["time"] for output in outputs]
+                )
+            )
+            .drop(columns=["time"])
+        )
 
     @staticmethod
     def _handle_trend(df: pd.DataFrame, threshold: float):
@@ -72,8 +85,11 @@ class Producer(object):
 
         x_in = list(range(0, df_length, 1))
         y_in = df["value"].tolist()
-        seg = Segmenter(x_in, y_in, n=df_length)
-        segments = seg.calculate_segments()
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning)
+            warnings.filterwarnings("ignore", category=RuntimeWarning)
+            seg = Segmenter(x_in, y_in, n=df_length)
+            segments = seg.calculate_segments()
 
         slope = segments[0].slope
         if slope > threshold:
