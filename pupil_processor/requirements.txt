@@ -1,3 +1,4 @@
 zmq 
 msgpack==0.5.6
 paho-mqtt>=1.6.1
+pandas>=2.0.0

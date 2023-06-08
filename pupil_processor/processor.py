@@ -6,6 +6,7 @@ import time
 import datetime
 import csv
 import uuid
+import pandas as pd
 
 EYE_INDEX_MAPPING = {
     0: "right",
@@ -21,7 +22,7 @@ PORT = 50020
 # MQTT CONNECTION DETAILS
 BROKER = "localhost"
 MQTT_PORT = 1883
-MQTT_ACTIVE = True
+MQTT_ACTIVE = False
 DEBUG_MQTT = True
 
 
@@ -68,15 +69,24 @@ subscriber = ctx.socket(zmq.SUB)
 subscriber.connect(f"tcp://{IP}:{sub_port}")
 subscriber.subscribe("pupil.0.3d")
 subscriber.subscribe("pupil.1.3d")
+subscriber.subscribe("blinks")
 
-last = {}
-while True:
-    topic, payload = subscriber.recv_multipart()
+
+last_pupil_data = {}
+last_blink = {"timestamp": datetime.datetime.now()}
+BLINK_OFFSET = 0.5  # seconds that must be between two blinks
+blinks = pd.DataFrame(
+    columns=["value"], index=pd.DatetimeIndex(name="timestamp", data=[])
+)
+
+
+def handle_pupils(payload):
+    global last_pupil_data
     message = msgpack.loads(payload)
     confidence = message[b"confidence"]
 
     if confidence < CONFIDENCE_TRHESHOLD:
-        continue
+        return
 
     id = message[b"id"]
     eye = EYE_INDEX_MAPPING[id]
@@ -84,28 +94,64 @@ while True:
 
     timestamp = approximate_timestamp(message[b"timestamp"], time_offset)
 
-    if last:
-        if last["eye"] == eye:
-            last = {
+    if last_pupil_data:
+        if last_pupil_data["eye"] == eye:
+            last_pupil_data = {
                 "eye": eye,
                 "diameter": diameter,
             }
-            continue
+            return
         else:
             data = {
                 "id": str(uuid.uuid4()),
-                "value": (last["diameter"] + diameter) / 2,
+                "value": (last_pupil_data["diameter"] + diameter) / 2,
                 "timestamp": timestamp.isoformat(),
             }
     else:
-        last = {
+        last_pupil_data = {
             "eye": eye,
             "diameter": diameter,
         }
-        continue
+        return
 
-    # print(data)
     if WRITE_TO_CSV:
         write_to_csv(data)
     if MQTT_ACTIVE:
         client.publish("pupil", json.dumps(data))
+
+
+def handle_blinks(payload):
+    global blinks
+    message = msgpack.loads(payload)
+    timestamp = approximate_timestamp(message[b"timestamp"], time_offset)
+    last_blink = {
+        "value": 1,
+        "timestamp": timestamp,
+    }
+    new_df = pd.DataFrame.from_dict([last_blink])
+    new_df.set_index(
+        pd.DatetimeIndex(data=new_df["timestamp"], name="timestamp"),
+        inplace=True,
+    )
+    new_df.drop(columns=["timestamp"], inplace=True)
+
+    if len(blinks.tail(1).index):
+        if blinks.tail(1).index.to_pydatetime() < timestamp - datetime.timedelta(
+            seconds=BLINK_OFFSET
+        ):
+            blinks = pd.concat([blinks, new_df])
+
+            if len(blinks.index) > 20:
+                df = blinks.groupby(pd.Grouper(freq="1min")).sum()
+                print(df)  # TODO send to mqtt
+    else:
+        blinks = new_df
+
+
+while True:
+    topic, payload = subscriber.recv_multipart()
+
+    if topic == b"blinks":
+        handle_blinks(payload)
+    else:
+        handle_pupils(payload)

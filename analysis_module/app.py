@@ -21,6 +21,8 @@ PRODUCERS = [
 ]
 PRODUCER_MAP = {producer.subscription_topic: producer for producer in PRODUCERS}
 
+# TODO consider, if it would be a good idea to introduce a cooldown period for modalities/producers tuples after something has been adjusted
+
 MODALITIES = [
     Modality(
         "speed",
