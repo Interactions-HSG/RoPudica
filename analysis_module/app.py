@@ -18,6 +18,14 @@ PRODUCERS = [
         output_modalities=["speed"],
         weight=1.0,
     ),
+    Producer(
+        "operator/distance",
+        analysis_interval=0.5,
+        threshold=0.001,
+        handler="_handle_trend",
+        output_modalities=["speed", "proxemics"],
+        weight=1.0,
+    ),
 ]
 PRODUCER_MAP = {producer.subscription_topic: producer for producer in PRODUCERS}
 
