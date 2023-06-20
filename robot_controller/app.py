@@ -126,5 +126,13 @@ def remove_smoothness():
     return "Removed smoothness"
 
 
+@app.route("/initialize_robot_params", methods=["POST"])
+def initialize_robot_params():
+    if request.json:
+        robot_main.initialize_params(request.json)
+        return "Initialized the robot params"
+    return "There was no json in the request"
+
+
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port="5000")

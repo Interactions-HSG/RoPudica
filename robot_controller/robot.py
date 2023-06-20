@@ -11,11 +11,9 @@ MIN_ANGLE_ACC = 400
 MAX_ANGLE_ACC = 800
 
 SPEED_STEPS = 10
-START_SPEED = 5  # Can be retrieved from LinkedIn component in the future
 ANGLE_SPEED_INCREMENT = (MAX_ANGLE_SPEED - MIN_ANGLE_SPEED) / SPEED_STEPS
 ANGLE_ACC_INCREMENT = (MAX_ANGLE_ACC - MIN_ANGLE_ACC) / SPEED_STEPS
 
-START_PROXEMICS = 7  # Can be retrieved from LinkedIn component in the future
 PROXEMICS_ANGLES = [
     {"angles": [2.0, -59.4, 1.6, 22.0, 0.6, 79.6, 1.9], "x_extension": 209},
     {"angles": [1.5, -46.0, 1.5, 27.7, 0.3, 71.9, 1.6], "x_extension": 261},
@@ -56,13 +54,7 @@ class RobotMain(object):
         self._funcs = {}
         self._speed_reactive = True
         self._current_speed = 0
-        self._speed_adjustment = START_SPEED
-        self._current_proxemics = START_PROXEMICS
-        self._episodic_trigger = False
-        self._additional_rotations = (
-            False  # Can be retrieved from LinkedIn component in the future
-        )
-        self._smooth = True  # Can be retrieved from LinkedIn component in the future
+        self.is_param_init = False
         self._robot_init()
 
     # Robot init
@@ -157,6 +149,14 @@ class RobotMain(object):
         else:
             return False
 
+    def initialize_params(self, params: dict):
+        self._speed_adjustment = params["speed"]
+        self._current_proxemics = params["proxemics"]
+        self._additional_rotations = params["rotation"]
+        self._smooth = params["smoothness"]
+        self._episodic_trigger = False
+        self.is_param_init = True
+
     def get_max_x_extension(self):
         return PROXEMICS_ANGLES[self._current_proxemics - 1]["x_extension"]
 
@@ -224,6 +224,8 @@ class RobotMain(object):
 
     # Robot Main Run
     def remote_run(self, repeat):
+        if not self.is_param_init:
+            return "Unable to start robot because parameters have not been initialized."
         try:
             greeting(self)
             # run x iterations

@@ -5,6 +5,7 @@ from producer import Producer
 from datetime import datetime, timedelta
 import pandas as pd
 import sched, time
+import requests
 
 ANALYSIS_INTERVAL = 3  # seconds
 ROBOT_CONTROLLER_URL = "http://localhost:5000"
@@ -28,8 +29,6 @@ PRODUCERS = [
     ),
 ]
 PRODUCER_MAP = {producer.subscription_topic: producer for producer in PRODUCERS}
-
-# TODO consider, if it would be a good idea to introduce a cooldown period for modalities/producers tuples after something has been adjusted
 
 MODALITIES = [
     Modality(
@@ -68,6 +67,12 @@ df = pd.DataFrame(columns=["time", "output_modality", "value"])
 MQTT_BROKER = "localhost"
 MQTT_PORT = 1883
 
+# Default start values to be used with experience
+PROXEMICS_MULTIPLIER = 0.7  # results in: 1, 1, 2, 3, 4
+SPEED_MULTIPLIER = 1.7  # results in: 2, 3, 5, 7, 9
+SMOOTHNESS_THRESHOLD = 3
+ROTATION_THRESHOLD = 2
+
 
 def analyse_signals(scheduler):
     global df
@@ -81,6 +86,7 @@ def analyse_signals(scheduler):
     )
 
     print(grouped)
+    # TODO consider, if it would be a good idea to introduce a cooldown period for modalities/producers tuples after something has been adjusted
     for index, row in grouped.iterrows():
         modality = MODALITIES_MAP.get(index, None)
         if not modality:
@@ -109,14 +115,48 @@ def connect_mqtt():
     return client
 
 
+def get_linkedIn_estimate(operator: str):
+    response = requests.post(
+        "http://localhost:5000/linkedInScore", json={"operator:": operator}
+    )
+    return response.json()["score"]
+
+
+def post_bootstrapped_params(params: dict):
+    response = requests.post(
+        ROBOT_CONTROLLER_URL + "/initialize_robot_params", json=params
+    )
+    return response.json()
+
+
+def calculate_params(experience: int):
+    if experience == 0:
+        raise Exception("Operator did not receive a value from LinkedIn")
+    params = {
+        "speed": round(SPEED_MULTIPLIER * experience),
+        "proxemics": round(PROXEMICS_MULTIPLIER * experience),
+        "smoothness": experience > SMOOTHNESS_THRESHOLD,
+        "rotation": experience > ROTATION_THRESHOLD,
+    }
+    return params
+
+
+def bootstrap_parameters():
+    operator = "Kay Erik Jenss"  # TODO get operator name from facial anaylsis module
+
+    experience = get_linkedIn_estimate(operator)
+    post_bootstrapped_params(calculate_params(experience))
+
+
 def run():
-    my_scheduler = sched.scheduler(time.time, time.sleep)
     client = connect_mqtt()
+    bootstrap_parameters()
 
     for producer in PRODUCERS:
         client.subscribe(producer.subscription_topic)
     client.loop_start()
 
+    my_scheduler = sched.scheduler(time.time, time.sleep)
     my_scheduler.enter(ANALYSIS_INTERVAL, 1, analyse_signals, (my_scheduler,))
     my_scheduler.run()
 

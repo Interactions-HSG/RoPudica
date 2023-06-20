@@ -19,3 +19,6 @@ posture_processor/*.pkl
 
 #analysis_module
 /analysis_module/analysis/
+
+#linkedin_scraping
+/linkedin_scraping/linkedin/
