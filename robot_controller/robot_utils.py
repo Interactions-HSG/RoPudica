@@ -6,13 +6,11 @@ def set_position(robot, angle, wait=True):
         speed=robot._angle_speed,
         mvacc=robot._angle_acc,
         wait=wait,
-        radius=-1.0,
+        radius=120 if robot._smooth else -1.0,
     )
+
 
 def set_gripper(robot, value, speed):
     return robot._arm.set_gripper_position(
-        value, 
-        wait=True, 
-        speed=speed, 
-        auto_enable=True
+        value, wait=True, speed=speed, auto_enable=True
     )

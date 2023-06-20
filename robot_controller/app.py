@@ -102,5 +102,29 @@ def decrease_proxemics():
     return "Increased speed from " + str(changes["old"]) + " to " + str(changes["new"])
 
 
+@app.route("/add_rotations", methods=["POST"])
+def add_rotations():
+    robot_main._additional_rotations = True
+    return "Added additional rotations"
+
+
+@app.route("/remove_rotations", methods=["POST"])
+def remove_rotations():
+    robot_main._additional_rotations = False
+    return "Removed additional rotations"
+
+
+@app.route("/add_smoothness", methods=["POST"])
+def add_smoothness():
+    robot_main._smooth = True
+    return "Added smoothness"
+
+
+@app.route("/remove_smoothness", methods=["POST"])
+def remove_smoothness():
+    robot_main._smooth = False
+    return "Removed smoothness"
+
+
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port="5000")

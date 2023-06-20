@@ -46,6 +46,20 @@ MODALITIES = [
         increase_path="/increase_proxemics",
         decrease_path="/decrease_proxemics",
     ),
+    Modality(
+        "smoothness",
+        threshold=0.1,
+        base_url=ROBOT_CONTROLLER_URL,
+        increase_path="/add_smoothness",
+        decrease_path="/remove_smoothness",
+    ),
+    Modality(
+        "rotation",
+        threshold=0.1,
+        base_url=ROBOT_CONTROLLER_URL,
+        increase_path="/add_rotations",
+        decrease_path="/remove_rotations",
+    ),
 ]
 MODALITIES_MAP = {modality.name: modality for modality in MODALITIES}
 
