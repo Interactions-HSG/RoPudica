@@ -11,6 +11,7 @@ Taking in data from an Apple Watch and processing it. Build the docker image wit
 
 Receiving an operator name via HTTP and responds with LinkedIn information and a score on how experienced the operator might have been with industrial robots.  
 It requires a _.env_ file in the _/linkedin_scraping_ directory which includes the attributes `LINKEDIN_USERNAME`, `LINKEDIN_PASSWORD` and `OPENAI_KEY`.
+Also run `export CHROMEDRIVER=~/chromedriver` to set the chromedriver path.
 
 Example:
 
