@@ -8,7 +8,7 @@ import sched, time
 import requests
 
 ANALYSIS_INTERVAL = 3  # seconds
-ROBOT_CONTROLLER_URL = "http://localhost:5000"
+ROBOT_CONTROLLER_URL = "http://localhost:5001"
 
 PRODUCERS = [
     Producer(
