@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Robot Controller</title>
+    <script type="text/javascript">
+        function getParams() {
+            var xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function () {
+                if (this.readyState == 4 && this.status == 200) {
+                    var response = JSON.parse(this.responseText);
+                    document.getElementById("speed_adjustment").innerHTML = response.speed_adjustment;
+                    document.getElementById("speed_adjustment_slider").value = response.speed_adjustment;
+                    document.getElementById("current_speed").innerHTML = response.current_speed;
+                    document.getElementById("current_speed_slider").value = response.current_speed;
+                    document.getElementById("proxemics").innerHTML = response.proxemics;
+                    document.getElementById("proxemics_slider").value = response.proxemics;
+                    document.getElementById("rotations").checked = response.rotations;
+                    document.getElementById("smoothness").checked = response.smoothness;
+                }
+            };
+            xhttp.open("GET", "http://localhost:5001/params", true);
+            xhttp.send();
+        }
+        setInterval(getParams, 2000);
+    </script>
+</head>
+
+<body>
+    <div style="text-align: center; font-size:xx-large">
+        <div>
+            <label for="param1" style="font-weight: bold;">Speed adjustment</label>
+            <div id="speed_adjustment"></div>
+            <input id="speed_adjustment_slider" input type="range" min="1" max="10" readonly>
+        </div>
+        <br>
+        <div>
+            <label for="param2" style="font-weight: bold;">Current Speed</label>
+            <div id="current_speed"></div>
+            <input id="current_speed_slider" input type="range" min="1" max="10" readonly>
+        </div>
+        <br>
+        <div>
+            <label for="param3" style="font-weight: bold;">Proxemics</label>
+            <div id="proxemics"></div>
+            <input id="proxemics_slider" input type="range" min="1" max="10" readonly>
+        </div>
+        <br>
+        <div>
+            <label for="param4" style="font-weight: bold;">Rotations</label><br>
+            <input type="checkbox" id="rotations" readonly>
+        </div>
+        <br>
+        <div>
+            <label for="param5" style="font-weight: bold;">Smoothness</label><br>
+            <input type="checkbox" id="smoothness" readonly>
+        </div>
+        <br>
+        <div>
+            <button type="button" style="background-color: red; color: white; font-size: xx-large;"
+                onclick="window.location.href='http://localhost:5001/stop'">STOP</button>
+</body>
+
+</html>

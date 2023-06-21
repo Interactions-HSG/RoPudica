@@ -1,13 +1,14 @@
 import os
 from dotenv import load_dotenv
 from flask import Flask, request
+from flask_cors import CORS
 from xarm import version
 from xarm.wrapper import XArmAPI
-from special_movements import greeting, episodic_action
 from robot import RobotMain
 
 load_dotenv()
 app = Flask(__name__)
+CORS(app)
 
 ROBOT_IP = os.getenv("ROBOT_IP")
 RobotMain.pprint("xArm-Python-SDK Version:{}".format(version.__version__))
@@ -132,6 +133,17 @@ def initialize_robot_params():
         robot_main.initialize_params(request.json)
         return "Initialized the robot params"
     return "There was no json in the request"
+
+
+@app.route("/params", methods=["GET"])
+def get_params():
+    return {
+        "speed_adjustment": robot_main._speed_adjustment,
+        "current_speed": robot_main._current_speed,
+        "proxemics": robot_main._current_proxemics,
+        "rotations": robot_main._additional_rotations,
+        "smoothness": robot_main._smooth,
+    }
 
 
 if __name__ == "__main__":

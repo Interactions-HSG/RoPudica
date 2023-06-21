@@ -1,3 +1,4 @@
 Flask>=2.2.3
+flask-cors
 python-dotenv
 pyserial==3.4
