@@ -108,7 +108,7 @@ with mp_holistic.Holistic(
     min_detection_confidence=0.5, min_tracking_confidence=0.5
 ) as holistic:
     while True:
-        start_time = dt.datetime.today().timestamp()
+        start_time = datetime.today().timestamp()
 
         # Get and align frames
         frames = pipeline.wait_for_frames()
@@ -205,7 +205,7 @@ with mp_holistic.Holistic(
             )
 
         # Display FPS
-        time_diff = dt.datetime.today().timestamp() - start_time
+        time_diff = datetime.today().timestamp() - start_time
         fps = int(1 / time_diff)
         org3 = (20, org[1] - 20)
         images = cv2.putText(
