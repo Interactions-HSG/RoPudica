@@ -23,3 +23,6 @@ posture_processor/*.pkl
 
 #linkedin_scraping
 /linkedin_scraping/linkedin/
+
+#expression_processor
+/expression_processor/weights/
