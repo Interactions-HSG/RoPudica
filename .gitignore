@@ -1,5 +1,6 @@
 #general
 .env
+.DS_Store
 */__pycache__/
 
 #heartrate_processor
