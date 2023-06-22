@@ -1,9 +1,10 @@
 # syntax=docker/dockerfile:1
 
-FROM python:3.8-buster
+FROM python:3.8-slim-buster
 
 WORKDIR /python-docker
 
+RUN apt-get update && apt-get install git -y
 RUN git clone https://github.com/xArm-Developer/xArm-Python-SDK.git
 RUN cp -R xArm-Python-SDK/xarm .
 RUN rm -rf xArm-Python-SDK

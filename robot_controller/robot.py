@@ -15,29 +15,17 @@ ANGLE_SPEED_INCREMENT = (MAX_ANGLE_SPEED - MIN_ANGLE_SPEED) / SPEED_STEPS
 ANGLE_ACC_INCREMENT = (MAX_ANGLE_ACC - MIN_ANGLE_ACC) / SPEED_STEPS
 
 PROXEMICS_ANGLES = [
-    {"angles": [2.0, -59.4, 1.6, 22.0, 0.6, 79.6, 1.9], "x_extension": 209},
-    {"angles": [1.5, -46.0, 1.5, 27.7, 0.3, 71.9, 1.6], "x_extension": 261},
-    {"angles": [1.1, -33.6, 1.4, 34.9, 0.0, 66.7, 1.4], "x_extension": 312},
-    {"angles": [0.8, -22.4, 1.4, 43.1, -0.3, 63.7, 1.3], "x_extension": 364},
-    {"angles": [0.6, -12.2, 1.3, 52.2, -0.6, 62.6, 1.3], "x_extension": 416},
-    {"angles": [0.6, -2.3, 1.2, 62.6, -0.8, 63.1, 1.3], "x_extension": 468},
-    {"angles": [0.8, 7.6, 0.9, 74.4, -1.0, 65.0, 1.2], "x_extension": 520},
-    {"angles": [0.9, 17.9, 0.6, 88.1, -1.0, 68.4, 1.1], "x_extension": 572},
-    {"angles": [1.2, 29.4, 0.2, 104.9, -0.9, 73.8, 0.8], "x_extension": 624},
-    {"angles": [1.3, 44.5, 0.0, 129.4, -0.7, 83.2, 0.5], "x_extension": 676},
+    {"angles": [-0.8, -25.9, -1.0, 0.2, -0.5, -69.4, -2.0], "x_extension": 400},
+    {"angles": [-0.7, -12.2, -0.6, 10.9, 0.0, -72.4, -1.9], "x_extension": 455},
+    {"angles": [-0.6, -2.1, -0.4, 21.7, 0.3, -71.6, -1.9], "x_extension": 511},
+    {"angles": [-0.4, 6.3, -0.4, 32.7, 0.5, -69.2, -2.0], "x_extension": 566},
+    {"angles": [-0.3, 14.3, -0.4, 44.3, 0.7, -65.5, -2.0], "x_extension": 622},
+    {"angles": [-0.1, 22.2, -0.6, 56.7, 0.8, -61.0, -2.0], "x_extension": 677},
+    {"angles": [0.1, 30.4, -0.7, 70.3, 1.0, -55.6, -2.1], "x_extension": 733},
+    {"angles": [0.3, 39.5, -0.9, 85.9, 1.1, -49.1, -2.0], "x_extension": 788},
+    {"angles": [0.4, 50.5, -1.3, 105.4, 1.4, -40.5, -1.9], "x_extension": 844},
+    {"angles": [0.4, 68.0, -2.3, 137.4, 2.4, -26.1, -1.9], "x_extension": 900},
 ]
-NEW_PROXEMICS_ANGLES = [
-    {"angles": [-0.3, 39.3, -0.1, 85.6, 1.2, -49.2, -2.6], "x_extension": 1},
-    {"angles": [-0.3, 39.3, -0.1, 85.6, 1.2, -49.2, -2.6], "x_extension": 1},
-    {"angles": [-0.3, 39.3, -0.1, 85.6, 1.2, -49.2, -2.6], "x_extension": 1},
-    {"angles": [-0.3, 39.3, -0.1, 85.6, 1.2, -49.2, -2.6], "x_extension": 1},
-    {"angles": [-0.3, 39.3, -0.1, 85.6, 1.2, -49.2, -2.6], "x_extension": 1},
-    {"angles": [-0.3, 39.3, -0.1, 85.6, 1.2, -49.2, -2.6], "x_extension": 1},
-    {"angles": [-0.3, 39.3, -0.1, 85.6, 1.2, -49.2, -2.6], "x_extension": 1},
-    {"angles": [-0.3, 39.3, -0.1, 85.6, 1.2, -49.2, -2.6], "x_extension": 1},
-    {"angles": [-0.3, 39.3, -0.1, 85.6, 1.2, -49.2, -2.6], "x_extension": 1},
-    {"angles": [-0.3, 39.3, -0.1, 85.6, 1.2, -49.2, -2.6], "x_extension": 1},
-]  # TODO - Add new proxemics angles
 
 
 class RobotMain(object):
@@ -198,7 +186,7 @@ class RobotMain(object):
             # additional waypoint for rotation
             set_position(self, [-19.1, -0.1, -27.3, 40.5, -125.6, 62.5, 54.3])
 
-        set_position(self, NEW_PROXEMICS_ANGLES[self._current_proxemics - 1]["angles"])
+        set_position(self, PROXEMICS_ANGLES[self._current_proxemics - 1]["angles"])
 
         if self._additional_rotations:
             # additional waypoint for rotation
