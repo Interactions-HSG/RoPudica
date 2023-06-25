@@ -37,6 +37,7 @@ MODALITIES = [
         base_url=ROBOT_CONTROLLER_URL,
         increase_path="/increase_speed",
         decrease_path="/decrease_speed",
+        cooldown_duration=20,
     ),
     Modality(
         "proxemics",
@@ -44,6 +45,7 @@ MODALITIES = [
         base_url=ROBOT_CONTROLLER_URL,
         increase_path="/increase_proxemics",
         decrease_path="/decrease_proxemics",
+        cooldown_duration=20,
     ),
     Modality(
         "smoothness",
@@ -51,6 +53,7 @@ MODALITIES = [
         base_url=ROBOT_CONTROLLER_URL,
         increase_path="/add_smoothness",
         decrease_path="/remove_smoothness",
+        cooldown_duration=20,
     ),
     Modality(
         "rotation",
@@ -58,7 +61,9 @@ MODALITIES = [
         base_url=ROBOT_CONTROLLER_URL,
         increase_path="/add_rotations",
         decrease_path="/remove_rotations",
+        cooldown_duration=20,
     ),
+    # Episodic behaviour as modality without a decrease path?
 ]
 MODALITIES_MAP = {modality.name: modality for modality in MODALITIES}
 
@@ -86,7 +91,6 @@ def analyse_signals(scheduler):
     )
 
     print(grouped)
-    # TODO consider, if it would be a good idea to introduce a cooldown period for modalities/producers tuples after something has been adjusted
     for index, row in grouped.iterrows():
         modality = MODALITIES_MAP.get(index, None)
         if not modality:
