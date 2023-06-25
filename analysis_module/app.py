@@ -63,7 +63,13 @@ MODALITIES = [
         decrease_path="/remove_rotations",
         cooldown_duration=20,
     ),
-    # Episodic behaviour as modality without a decrease path?
+    Modality(
+        "episodic_behaviour",
+        threshold=0.3,
+        base_url=ROBOT_CONTROLLER_URL,
+        increase_path="/episodic_behaviour",
+        cooldown_duration=300,
+    ),
 ]
 MODALITIES_MAP = {modality.name: modality for modality in MODALITIES}
 

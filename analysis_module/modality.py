@@ -14,7 +14,7 @@ class Modality(object):
         threshold: float,
         base_url: str,
         increase_path: str,
-        decrease_path: str,
+        decrease_path: str = None,
         neutral_path: str = None,
         increase_method: MethodLiteral = "POST",
         decrease_method: MethodLiteral = "POST",
