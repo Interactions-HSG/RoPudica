@@ -8,6 +8,7 @@ import numpy as np
 from datetime import datetime
 import paho.mqtt.client as mqtt
 import requests
+import base64
 
 CONSIDER_ROBOT_POSITION = True
 CAMERA_OFFSET = 600  # mm the camera is offset from the robot
@@ -15,6 +16,8 @@ ROBOT_POSITION_REQUEST_OFFSET = (
     1  # Number of frames to wait before requesting robot position
 )
 ROBOT_CONTROLLER_BASE = "http://127.0.0.1:5000/"
+
+EXPRESSION_ANALYSIS_REQUEST_OFFSET = 5  # Number of frames to wait before requesting
 
 MQTT_BROKER = "localhost"
 MQTT_PORT = 1883
@@ -38,6 +41,38 @@ def get_arm_max_extension():
     # instead of getting the exact position of the robot, we are retrieving the current maximum extension on the x axis
     response = requests.get(ROBOT_CONTROLLER_BASE + "/extension")
     return response.json()
+
+
+def img_to_base64(img):
+    retval, buffer = cv2.imencode(".jpg", img)
+    jpg_as_text = base64.b64encode(buffer)
+    jpg_as_text = jpg_as_text.decode()
+    return jpg_as_text
+
+
+def analyze_current_image_expression(image):
+    jpg_as_text = img_to_base64(image)
+    # print(jpg_as_text)
+    body = {"img_path": "data:image/jpeg;base64," + jpg_as_text}
+    response = requests.post("http://localhost:5007/analyze_emotion", json=body)
+    if response:
+        res = response.json()
+        if res.get("results"):
+            emotion = res.get("results")[0].get("dominant_emotion")
+            # print(emotion)
+            data = {
+                "id": str(uuid.uuid4()),
+                "value": emotion,
+                "timestamp": datetime.now().isoformat(),
+            }
+            client.publish("expression", json.dumps(data))
+
+
+def analyze_operator(image):
+    jpg_as_text = img_to_base64(image)
+    # print(jpg_as_text)
+    body = {"img_path": "data:image/jpeg;base64," + jpg_as_text}
+    response = requests.post("http://localhost:5007/analyze", json=body)
 
 
 def process_proxemics(results, robot_extension):
@@ -140,6 +175,12 @@ with mp_holistic.Holistic(
         images = cv2.flip(background_removed, 1)
         color_image = cv2.flip(color_image, 1)
         color_images_rgb = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
+
+        if processed_images == 1:
+            analyze_operator(color_image)
+
+        if (processed_images + 1) % EXPRESSION_ANALYSIS_REQUEST_OFFSET == 0:
+            analyze_current_image_expression(color_image)
 
         # Process pose
         results = holistic.process(color_images_rgb)

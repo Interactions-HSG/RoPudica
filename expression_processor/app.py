@@ -3,6 +3,7 @@ from deepface import DeepFace
 
 
 app = Flask(__name__)
+gender, race, age = None, None, None
 
 
 def analyze_image(
@@ -47,6 +48,23 @@ def analyze_emotion():
     return analysis_route_functionality(request, actions=["emotion"])
 
 
+@app.route("/operator_details", methods=["get"])
+def get_operator_details():
+    global gender, race, age
+    return {
+        "gender": gender,
+        "race": race,
+        "age": age,
+    }
+
+
 @app.route("/analyze", methods=["POST"])
 def analyze():
-    return analysis_route_functionality(request)
+    global gender, race, age
+    res = analysis_route_functionality(request)
+    if res and res.get("results"):
+        gender = res.get("results")[0].get("dominant_gender")
+        race = res.get("results")[0].get("dominant_race")
+        age = res.get("results")[0].get("age")
+        return res
+    return None
