@@ -7,10 +7,12 @@ from further_handlers import handle_expression
 import pandas as pd
 import sched, time
 import requests
+import time
 
 ANALYSIS_INTERVAL = 3  # seconds
 ROBOT_CONTROLLER_URL = "http://robot-controller:5001"
 LINKEDIN_ROUTE = "http://linkedin-scraping:5000/linkedInScore"
+EXPRESSION_ANALYZER_BASE_URL = "http://expression-processor:5007"
 
 MQTT_BROKER = "mqtt-broker"
 MQTT_PORT = 1883
@@ -168,10 +170,24 @@ def calculate_params(experience: int):
 
 
 def bootstrap_parameters():
+    while True:
+        try:
+            response = requests.get(EXPRESSION_ANALYZER_BASE_URL + "/operator_details")
+            if response.status_code == 200:
+                res = response.json()
+                gender = res.get("gender", None)
+                if gender is not None:
+                    race = res.get("race", None)
+                    age = res.get("age", None)
+                    break
+        except Exception as e:
+            print(e)
+
     operator = "Kay Erik Jenss"  # TODO get operator name from facial anaylsis module
 
     experience = get_linkedIn_estimate(operator)
-    post_bootstrapped_params(calculate_params(experience))
+    params = calculate_params(experience)
+    post_bootstrapped_params(params)
 
 
 def run():
@@ -188,4 +204,5 @@ def run():
 
 
 if __name__ == "__main__":
+    time.sleep(10)  # done in order to comply with required start order
     run()
