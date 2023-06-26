@@ -17,7 +17,7 @@ PRODUCERS = [
         analysis_interval=0.5,
         threshold=0.001,
         handler="_handle_trend",
-        output_modalities=["speed"],
+        output_modalities=["speed", "smoothness", "rotation"],
         weight=1.0,
     ),
     Producer(
