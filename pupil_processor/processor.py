@@ -20,7 +20,7 @@ IP = "localhost"
 PORT = 50020
 
 # MQTT CONNECTION DETAILS
-BROKER = "mqtt-broker"
+BROKER = "localhost"
 MQTT_PORT = 1883
 MQTT_ACTIVE = False
 DEBUG_MQTT = True

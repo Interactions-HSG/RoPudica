@@ -10,9 +10,9 @@ import requests
 import time
 
 ANALYSIS_INTERVAL = 3  # seconds
-ROBOT_CONTROLLER_URL = "http://robot-controller:5001"
+ROBOT_CONTROLLER_URL = "http://robot-controller:5000"
 LINKEDIN_ROUTE = "http://linkedin-scraping:5000/linkedInScore"
-EXPRESSION_ANALYZER_BASE_URL = "http://expression-processor:5007"
+EXPRESSION_ANALYZER_BASE_URL = "http://expression-processor:5000"
 
 MQTT_BROKER = "mqtt-broker"
 MQTT_PORT = 1883
@@ -171,6 +171,7 @@ def calculate_params(experience: int):
 
 def bootstrap_parameters():
     while True:
+        time.sleep(1)
         try:
             response = requests.get(EXPRESSION_ANALYZER_BASE_URL + "/operator_details")
             if response.status_code == 200:
