@@ -1,6 +1,7 @@
-!/bin/bash
+cd ./posture_processor
+source posture/bin/activate
 
-max_iteration=20
+max_iteration=50
 
 for i in $(seq 1 $max_iteration)
 do
