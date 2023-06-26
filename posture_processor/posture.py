@@ -1,4 +1,3 @@
-# extended code from https://github.com/smartdesignworldwide/Technology-Blog-Post-Supplementary-Material
 import json
 import uuid
 import pyrealsense2 as rs
@@ -15,7 +14,8 @@ CAMERA_OFFSET = 600  # mm the camera is offset from the robot
 ROBOT_POSITION_REQUEST_OFFSET = (
     1  # Number of frames to wait before requesting robot position
 )
-ROBOT_CONTROLLER_BASE = "http://127.0.0.1:5000/"
+ROBOT_CONTROLLER_BASE = "http://localhost:5001"
+EXPRESSION_ANALYZER_BASE_URL = "http://localhost:5007"
 
 EXPRESSION_ANALYSIS_REQUEST_OFFSET = 5  # Number of frames to wait before requesting
 
@@ -54,7 +54,9 @@ def analyze_current_image_expression(image):
     jpg_as_text = img_to_base64(image)
     # print(jpg_as_text)
     body = {"img_path": "data:image/jpeg;base64," + jpg_as_text}
-    response = requests.post("http://localhost:5007/analyze_emotion", json=body)
+    response = requests.post(
+        EXPRESSION_ANALYZER_BASE_URL + "/analyze_emotion", json=body
+    )
     if response:
         res = response.json()
         if res.get("results"):
@@ -72,7 +74,7 @@ def analyze_operator(image):
     jpg_as_text = img_to_base64(image)
     # print(jpg_as_text)
     body = {"img_path": "data:image/jpeg;base64," + jpg_as_text}
-    response = requests.post("http://localhost:5007/analyze", json=body)
+    response = requests.post(EXPRESSION_ANALYZER_BASE_URL + "/analyze", json=body)
 
 
 def process_proxemics(results, robot_extension):

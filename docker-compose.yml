@@ -24,9 +24,23 @@ services:
     volumes:
       - grafana-storage:/var/lib/grafana
   
-  heartrate-server:
-    container_name: heartrate-flask
-    image: heartrate-flask-docker
+  analysis-module:
+    container_name: analysis-module
+    image: analysis_module
+    depends_on:
+      - mqtt-broker
+  
+  expression-processor:
+    container_name: expression-processor
+    image: expression_processor
+    ports:
+      - 5007:5000
+    depends_on:
+      - mqtt-broker
+  
+  heartrate-processor:
+    container_name: heartrate-processor
+    image: heartrate_processor
     ports:
       - 3476:5000
     depends_on:
@@ -34,10 +48,18 @@ services:
   
   linkedin-scraping:
     container_name: linkedin-scraping
-    image: linkedin-scraping-flask-docker
+    image: linkedin_scraping
     ports:
-      - 5000:5000
+      - 5000:5000 
     env_file: linkedin_scraping/.env
+  
+  robot-controller:
+    container_name: robot-controller
+    image: robot_controller
+    ports:
+      - 5001:5000 
+    depends_on:
+      - mqtt-broker
 
 volumes:
   grafana-storage: 

@@ -9,7 +9,11 @@ import sched, time
 import requests
 
 ANALYSIS_INTERVAL = 3  # seconds
-ROBOT_CONTROLLER_URL = "http://localhost:5001"
+ROBOT_CONTROLLER_URL = "http://robot-controller:5001"
+LINKEDIN_ROUTE = "http://linkedin-scraping:5000/linkedInScore"
+
+MQTT_BROKER = "mqtt-broker"
+MQTT_PORT = 1883
 
 PRODUCERS = [
     Producer(
@@ -92,9 +96,6 @@ MODALITIES_MAP = {modality.name: modality for modality in MODALITIES}
 
 df = pd.DataFrame(columns=["time", "output_modality", "value"])
 
-MQTT_BROKER = "localhost"
-MQTT_PORT = 1883
-
 # Default start values to be used with experience
 PROXEMICS_MULTIPLIER = 0.7  # results in: 1, 1, 2, 3, 4
 SPEED_MULTIPLIER = 1.7  # results in: 2, 3, 5, 7, 9
@@ -143,9 +144,7 @@ def connect_mqtt():
 
 
 def get_linkedIn_estimate(operator: str):
-    response = requests.post(
-        "http://localhost:5000/linkedInScore", json={"operator:": operator}
-    )
+    response = requests.post(LINKEDIN_ROUTE, json={"operator:": operator})
     return response.json()["score"]
 
 
