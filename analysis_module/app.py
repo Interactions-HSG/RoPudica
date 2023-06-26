@@ -36,6 +36,14 @@ PRODUCERS = [
         output_modalities=["episodic_behaviour"],
         weight=1.0,
     ),
+    Producer(
+        "heartrate",
+        analysis_interval=3,
+        threshold=0.1,
+        handler="_handle_trend",
+        output_modalities=["speed", "smoothness", "rotation"],
+        weight=1.0,
+    ),
 ]
 PRODUCER_MAP = {producer.subscription_topic: producer for producer in PRODUCERS}
 
