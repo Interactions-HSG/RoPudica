@@ -3,6 +3,7 @@ import paho.mqtt.client as mqtt
 from modality import Modality
 from producer import Producer
 from datetime import datetime, timedelta
+from further_handlers import handle_expression
 import pandas as pd
 import sched, time
 import requests
@@ -25,6 +26,14 @@ PRODUCERS = [
         threshold=0.001,
         handler="_handle_trend",
         output_modalities=["speed", "proxemics"],
+        weight=1.0,
+    ),
+    Producer(
+        "expression",
+        analysis_interval=3,
+        threshold=-2,
+        handler=handle_expression,
+        output_modalities=["episodic_behaviour"],
         weight=1.0,
     ),
 ]
