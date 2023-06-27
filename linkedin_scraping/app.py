@@ -138,6 +138,10 @@ def alternative_scraping(operator_linkeddin_url):
 def index():
     if request.json and "operator" in request.json:
         operator = request.json["operator"]
+        return {
+            "score": 1,
+            "reasoning": "This is just provisionary. We are working on it. ",
+        }
 
         # found_user = api.search_people(operator)[0]
 

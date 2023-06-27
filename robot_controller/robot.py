@@ -146,7 +146,9 @@ class RobotMain(object):
         self.is_param_init = True
 
     def get_max_x_extension(self):
-        return PROXEMICS_ANGLES[self._current_proxemics - 1]["x_extension"]
+        if hasattr(self, "_current_proxemics"):
+            return PROXEMICS_ANGLES[self._current_proxemics - 1]["x_extension"]
+        return PROXEMICS_ANGLES[0]["x_extension"]
 
     def set_angle_values(self, angle_speed=None, angle_acc=None):
         if angle_speed is not None:
@@ -184,13 +186,15 @@ class RobotMain(object):
 
         if self._additional_rotations:
             # additional waypoint for rotation
-            set_position(self, [-19.1, -0.1, -27.3, 40.5, -125.6, 62.5, 54.3])
+            set_position(
+                self, [-19.1, -0.1, -27.3, 40.5, -125.6, 62.5, 54.3], wait=False
+            )
 
         set_position(self, PROXEMICS_ANGLES[self._current_proxemics - 1]["angles"])
 
         if self._additional_rotations:
             # additional waypoint for rotation
-            set_position(self, [3.9, -21, 40.5, 26, 129.7, 69.6, -50.8])
+            set_position(self, [3.9, -21, 40.5, 26, 129.7, 69.6, -50.8], wait=False)
 
         set_position(self, [42.1, 9.7, 34.2, 55.1, -11.8, 47, 80.3])
         set_position(self, [26.9, -33.2, 13.9, 15.5, 7.6, 45.7, 29.9])

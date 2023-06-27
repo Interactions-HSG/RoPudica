@@ -96,7 +96,9 @@ MODALITIES = [
 ]
 MODALITIES_MAP = {modality.name: modality for modality in MODALITIES}
 
-df = pd.DataFrame(columns=["time", "output_modality", "value"])
+df = pd.DataFrame(
+    columns=["output_modality", "value"], index=pd.DatetimeIndex(name="time", data=[])
+)
 
 # Default start values to be used with experience
 PROXEMICS_MULTIPLIER = 0.7  # results in: 1, 1, 2, 3, 4
@@ -146,15 +148,13 @@ def connect_mqtt():
 
 
 def get_linkedIn_estimate(operator: str):
-    response = requests.post(LINKEDIN_ROUTE, json={"operator:": operator})
+    response = requests.get(LINKEDIN_ROUTE, json={"operator": operator})
+    print(response.json())
     return response.json()["score"]
 
 
 def post_bootstrapped_params(params: dict):
-    response = requests.post(
-        ROBOT_CONTROLLER_URL + "/initialize_robot_params", json=params
-    )
-    return response.json()
+    requests.post(ROBOT_CONTROLLER_URL + "/initialize_robot_params", json=params)
 
 
 def calculate_params(experience: int):
@@ -185,8 +185,9 @@ def bootstrap_parameters():
             print(e)
 
     operator = "Kay Erik Jenss"  # TODO get operator name from facial anaylsis module
-
+    print(gender, age, race)
     experience = get_linkedIn_estimate(operator)
+    print(experience)
     params = calculate_params(experience)
     post_bootstrapped_params(params)
 

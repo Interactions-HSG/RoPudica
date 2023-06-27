@@ -26,13 +26,13 @@ services:
   
   analysis-module:
     container_name: analysis-module
-    image: analysis_module
+    image: analysis_module:latest
     depends_on:
       - mqtt-broker
   
   expression-processor:
     container_name: expression-processor
-    image: expression_processor
+    image: expression_processor:latest
     ports:
       - 5007:5000
     depends_on:
@@ -40,7 +40,7 @@ services:
   
   heartrate-processor:
     container_name: heartrate-processor
-    image: heartrate_processor
+    image: heartrate_processor:latest
     ports:
       - 3476:5000
     depends_on:
@@ -48,14 +48,14 @@ services:
   
   linkedin-scraping:
     container_name: linkedin-scraping
-    image: linkedin_scraping
+    image: linkedin_scraping:latest
     ports:
       - 5000:5000 
     env_file: linkedin_scraping/.env
   
   robot-controller:
     container_name: robot-controller
-    image: robot_controller
+    image: robot_controller:latest
     ports:
       - 5001:5000 
     depends_on:

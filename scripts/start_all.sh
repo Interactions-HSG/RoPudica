@@ -1,6 +1,8 @@
 echo "Starting all Docker containers"
 docker compose up -d
 
+sleep 5
+
 echo "Starting posture processor"
 sh ./scripts/multi_attempt_posture_start.sh
 

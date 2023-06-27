@@ -23,7 +23,7 @@ def run_robot():
     return "Started running the robot!"
 
 
-@app.route("/stop", methods=["POST"])
+@app.route("/stop", methods=["POST", "GET"])
 def stop_robot():
     robot_main._arm.emergency_stop()
     return "Emergency stopped the robot!"
