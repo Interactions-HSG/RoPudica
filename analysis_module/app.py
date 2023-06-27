@@ -41,11 +41,19 @@ PRODUCERS = [
     ),
     Producer(
         "heartrate",
-        analysis_interval=3,
+        analysis_interval=60,
         threshold=0.1,
         handler="_handle_trend",
         output_modalities=["speed", "smoothness", "rotation"],
         weight=1.0,
+    ),
+    Producer(
+        "blinks",
+        analysis_interval=300,
+        threshold=0.1,
+        handler="_handle_trend",
+        output_modalities=["episodic_behaviour", "rotation"],
+        weight=-1.0,  # negative weight to reverse slope analysis
     ),
 ]
 PRODUCER_MAP = {producer.subscription_topic: producer for producer in PRODUCERS}
@@ -116,7 +124,7 @@ def analyse_signals():
         .mean()
     )
 
-    print(grouped)
+    print(grouped, flush=True)
     for index, row in grouped.iterrows():
         modality = MODALITIES_MAP.get(index, None)
         if not modality:
@@ -184,7 +192,6 @@ def _set_cooldown():
 def deliver_data():
     if request.json:
         data = request.json
-        print(data)
         producer = PRODUCER_MAP.get(data["topic"], None)
         if producer:
             # append data to producer df and handle the data

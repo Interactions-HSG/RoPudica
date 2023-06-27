@@ -62,6 +62,7 @@ BLINK_OFFSET = 0.5  # seconds that must be between two blinks
 blinks = pd.DataFrame(
     columns=["value"], index=pd.DatetimeIndex(name="timestamp", data=[])
 )
+last_timestamp = datetime.datetime.now()
 
 
 def handle_pupils(payload):
@@ -126,9 +127,27 @@ def handle_blinks(payload):
         ):
             blinks = pd.concat([blinks, new_df])
 
-            if len(blinks.index) > 20:
+            if len(blinks.index) > 15:
                 df = blinks.groupby(pd.Grouper(freq="1min")).sum()
-                print(df)  # TODO send to mqtt
+                last_index = df.tail(1).index.to_pydatetime()[0]
+
+                # check if new minute has started
+                global last_timestamp
+                if last_index > last_timestamp:
+                    # from df get the value column from the second to last row
+                    value = int(df.tail(2).head(1)["value"].values[0])
+                    data = {
+                        "id": str(uuid.uuid4()),
+                        "value": value,
+                        "timestamp": last_timestamp.isoformat(),
+                        "topic": "blinks",
+                    }
+                    last_timestamp = last_index
+                    try:
+                        requests.post(ANALYSER_BASE_URL + "/data", json=data)
+                    except Exception as e:
+                        print(e)
+
     else:
         blinks = new_df
 

@@ -79,7 +79,7 @@ class Producer(object):
     def _handle_trend(df: pd.DataFrame, threshold: float):
         df_length = len(df.index.tolist())
 
-        if df_length < 10:
+        if df_length < 2:
             return 0
 
         x_in = list(range(0, df_length, 1))
