@@ -1,5 +1,5 @@
+from flask import Flask, request
 import json
-import paho.mqtt.client as mqtt
 from modality import Modality
 from producer import Producer
 from datetime import datetime, timedelta
@@ -9,13 +9,10 @@ import sched, time
 import requests
 import time
 
-ANALYSIS_INTERVAL = 3  # seconds
+ANALYSIS_INTERVAL = 10  # seconds
 ROBOT_CONTROLLER_URL = "http://robot-controller:5000"
 LINKEDIN_ROUTE = "http://linkedin-scraping:5000/linkedInScore"
 EXPRESSION_ANALYZER_BASE_URL = "http://expression-processor:5000"
-
-MQTT_BROKER = "mqtt-broker"
-MQTT_PORT = 1883
 
 PRODUCERS = [
     Producer(
@@ -106,11 +103,12 @@ SPEED_MULTIPLIER = 1.7  # results in: 2, 3, 5, 7, 9
 SMOOTHNESS_THRESHOLD = 3
 ROTATION_THRESHOLD = 2
 
+app = Flask(__name__)
+analysis_cooldown = datetime.now() + timedelta(seconds=ANALYSIS_INTERVAL)
 
-def analyse_signals(scheduler):
+
+def analyse_signals():
     global df
-    scheduler.enter(ANALYSIS_INTERVAL, 1, analyse_signals, (scheduler,))
-
     analysis_interval = df.last(pd.Timedelta(seconds=ANALYSIS_INTERVAL))
     grouped = (
         analysis_interval[["output_modality", "value"]]
@@ -129,22 +127,6 @@ def analyse_signals(scheduler):
             modality.decrease()
         else:
             modality.neutral()
-
-
-def on_message(client, userdata, msg):
-    global df
-    producer = PRODUCER_MAP.get(msg.topic)
-    if producer:
-        value = producer.handle(json.loads(msg.payload))
-        # print(value)
-        df = pd.concat([df, value]) if df is not None else value
-
-
-def connect_mqtt():
-    client = mqtt.Client(protocol=mqtt.MQTTv5)
-    client.on_message = on_message
-    client.connect(MQTT_BROKER, MQTT_PORT)
-    return client
 
 
 def get_linkedIn_estimate(operator: str):
@@ -192,19 +174,41 @@ def bootstrap_parameters():
     post_bootstrapped_params(params)
 
 
-def run():
-    client = connect_mqtt()
-    bootstrap_parameters()
+def _set_cooldown():
+    global analysis_cooldown
+    now = datetime.now()
+    analysis_cooldown = now + timedelta(seconds=ANALYSIS_INTERVAL)
 
-    for producer in PRODUCERS:
-        client.subscribe(producer.subscription_topic)
-    client.loop_start()
 
-    my_scheduler = sched.scheduler(time.time, time.sleep)
-    my_scheduler.enter(ANALYSIS_INTERVAL, 1, analyse_signals, (my_scheduler,))
-    my_scheduler.run()
+@app.route("/data", methods=["POST"])
+def deliver_data():
+    if request.json:
+        data = request.json
+        print(data)
+        producer = PRODUCER_MAP.get(data["topic"], None)
+        if producer:
+            # append data to producer df and handle the data
+            del data["topic"]
+            value = producer.handle(data)
+
+            # append handled data to global df
+            global df
+            df = pd.concat([df, value]) if df is not None else value
+
+            global analysis_cooldown
+            if analysis_cooldown < datetime.now():
+                _set_cooldown()
+                analyse_signals()
+                return {
+                    "response": "Data received and handled. Analysis performed.",
+                }, 202
+
+            return {
+                "response": "Data received and handled.",
+            }, 200
+    return {"response": "Could not associate the incoming data with any producer."}
 
 
 if __name__ == "__main__":
-    time.sleep(10)  # done in order to comply with required start order
-    run()
+    bootstrap_parameters()
+    app.run(debug=True, host="0.0.0.0", port="5000")

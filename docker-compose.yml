@@ -1,34 +1,36 @@
 version: '3.9'
 
 services:
-  mqtt-broker:
-    container_name: mqtt-broker
-    image: eclipse-mosquitto
-    volumes:
-      - ./mosquitto/config:/mosquitto/config
-      - ./mosquitto:/mosquitto/data
-      - ./mosquitto:/mosquitto/log
-    ports:
-      - 1883:1883
-      - 9001:9001
+  # mqtt-broker:
+  #   container_name: mqtt-broker
+  #   image: eclipse-mosquitto
+  #   volumes:
+  #     - ./mosquitto/config:/mosquitto/config
+  #     - ./mosquitto:/mosquitto/data
+  #     - ./mosquitto:/mosquitto/log
+  #   ports:
+  #     - 1883:1883
+  #     - 9001:9001
 
-  grafana:
-    container_name: grafana
-    image: grafana/grafana-oss:latest
-    ports:
-      - 3000:3000
-    environment:
-      - GF_INSTALL_PLUGINS=grafana-mqtt-datasource
-    depends_on:
-      - mqtt-broker
-    volumes:
-      - grafana-storage:/var/lib/grafana
+  # grafana:
+  #   container_name: grafana
+  #   image: grafana/grafana-oss:latest
+  #   ports:
+  #     - 3000:3000
+  #   environment:
+  #     - GF_INSTALL_PLUGINS=grafana-mqtt-datasource
+  #   depends_on:
+  #     - mqtt-broker
+  #   volumes:
+  #     - grafana-storage:/var/lib/grafana
   
   analysis-module:
     container_name: analysis-module
     image: analysis_module:latest
-    depends_on:
-      - mqtt-broker
+    ports:
+      - 5006:5000
+    # depends_on:
+    #   - mqtt-broker
   
   expression-processor:
     container_name: expression-processor
@@ -36,7 +38,8 @@ services:
     ports:
       - 5007:5000
     depends_on:
-      - mqtt-broker
+      - analysis-module
+  #     - mqtt-broker
   
   heartrate-processor:
     container_name: heartrate-processor
@@ -44,7 +47,8 @@ services:
     ports:
       - 3476:5000
     depends_on:
-      - mqtt-broker
+      - analysis-module
+      # - mqtt-broker
   
   linkedin-scraping:
     container_name: linkedin-scraping
@@ -59,7 +63,8 @@ services:
     ports:
       - 5001:5000 
     depends_on:
-      - mqtt-broker
+      - analysis-module
+  #     - mqtt-broker
 
 volumes:
   grafana-storage: 

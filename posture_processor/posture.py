@@ -5,7 +5,6 @@ import mediapipe as mp
 import cv2
 import numpy as np
 from datetime import datetime
-import paho.mqtt.client as mqtt
 import requests
 import base64
 
@@ -16,14 +15,9 @@ ROBOT_POSITION_REQUEST_OFFSET = (
 )
 ROBOT_CONTROLLER_BASE = "http://localhost:5001"
 EXPRESSION_ANALYZER_BASE_URL = "http://localhost:5007"
+ANALYSER_BASE_URL = "http://localhost:5006"
 
 EXPRESSION_ANALYSIS_REQUEST_OFFSET = 5  # Number of frames to wait before requesting
-
-MQTT_BROKER = "localhost"
-MQTT_PORT = 1883
-
-client = mqtt.Client(protocol=mqtt.MQTTv5)
-client.connect(MQTT_BROKER, MQTT_PORT)
 
 
 def get_landmark_distance(results, landmark_index):
@@ -66,8 +60,9 @@ def analyze_current_image_expression(image):
                 "id": str(uuid.uuid4()),
                 "value": emotion,
                 "timestamp": datetime.now().isoformat(),
+                "topic": "expression",
             }
-            client.publish("expression", json.dumps(data))
+            requests.post(ANALYSER_BASE_URL + "/data", json=data)
 
 
 def analyze_operator(image):
@@ -221,8 +216,9 @@ with mp_holistic.Holistic(
                 "id": str(uuid.uuid4()),
                 "value": distance,
                 "timestamp": datetime.now().isoformat(),
+                "topic": "operator/distance",
             }
-            client.publish("operator/distance", json.dumps(data))
+            requests.post(ANALYSER_BASE_URL + "/data", json=data)
 
             processed_images += 1
             images = cv2.putText(

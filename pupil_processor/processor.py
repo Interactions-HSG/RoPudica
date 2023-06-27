@@ -1,6 +1,6 @@
+import requests
 import zmq
 import msgpack
-import paho.mqtt.client as mqtt
 import json
 import time
 import datetime
@@ -19,16 +19,7 @@ WRITE_TO_CSV = False
 IP = "localhost"
 PORT = 50020
 
-# MQTT CONNECTION DETAILS
-BROKER = "localhost"
-MQTT_PORT = 1883
-MQTT_ACTIVE = False
-DEBUG_MQTT = True
-
-
-def on_publish(client, userdata, result):
-    print("data published \n")
-    pass
+ANALYSER_BASE_URL = "http://localhost:5006"
 
 
 def approximate_timestamp(pupil_timestamp, offset):
@@ -43,13 +34,6 @@ def write_to_csv(data, filename="pupil.csv"):
         )
         csv_writer.writerow(data.values())
 
-
-# MQTT
-if MQTT_ACTIVE:
-    client = mqtt.Client(protocol=mqtt.MQTTv5)
-    if DEBUG_MQTT:
-        client.on_publish = on_publish
-    client.connect(BROKER, MQTT_PORT)
 
 # ZMQ
 ctx = zmq.Context()
@@ -106,6 +90,7 @@ def handle_pupils(payload):
                 "id": str(uuid.uuid4()),
                 "value": (last_pupil_data["diameter"] + diameter) / 2,
                 "timestamp": timestamp.isoformat(),
+                "topic": "pupil",
             }
     else:
         last_pupil_data = {
@@ -116,8 +101,8 @@ def handle_pupils(payload):
 
     if WRITE_TO_CSV:
         write_to_csv(data)
-    if MQTT_ACTIVE:
-        client.publish("pupil", json.dumps(data))
+
+    requests.post(ANALYSER_BASE_URL + "/data", json=data)
 
 
 def handle_blinks(payload):

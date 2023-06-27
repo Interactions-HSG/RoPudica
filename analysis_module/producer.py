@@ -1,5 +1,4 @@
 import pandas as pd
-import paho.mqtt.client as mqtt
 import warnings
 
 from datetime import datetime, timedelta

@@ -1,10 +1,11 @@
 from flask import Flask, request
-import paho.mqtt.client as mqtt
 import time
 import pandas as pd
 import uuid
 from datetime import datetime
 import json
+
+import requests
 
 df = pd.DataFrame(columns=["time", "heartrate"])
 
@@ -12,16 +13,6 @@ app = Flask(__name__)
 
 broker = "mqtt-broker"
 port = 1883
-
-
-def on_publish(client, userdata, result):
-    print("data published \n")
-    pass
-
-
-client = mqtt.Client(protocol=mqtt.MQTTv5)
-client.on_publish = on_publish
-client.connect(broker, port)
 
 
 @app.route("/", methods=["PUT"])
@@ -39,8 +30,9 @@ def index():
                 "id": str(uuid.uuid4()),
                 "value": value,
                 "timestamp": datetime.now().isoformat(),
+                "topic": "heartrate",
             }
-            client.publish("heartrate", json.dumps(data))
+            requests.post("http://analysis-module:5000/data", json=data)
 
     return ""
 
