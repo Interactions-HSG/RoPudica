@@ -166,7 +166,7 @@ def bootstrap_parameters():
         except Exception as e:
             print(e)
 
-    operator = "Kay Erik Jenss"  # TODO get operator name from facial anaylsis module
+    operator = "lukashueller"  # TODO get operator name from facial anaylsis module
     print(gender, age, race)
     experience = get_linkedIn_estimate(operator)
     print(experience)

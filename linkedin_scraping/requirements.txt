@@ -1,5 +1,4 @@
 Flask>=2.2.3
 python-dotenv
 openai
-git+https://github.com/tomquirk/linkedin-api.git
-linkedin_scraper
+linkedin-api

@@ -11,26 +11,12 @@ services:
   #   ports:
   #     - 1883:1883
   #     - 9001:9001
-
-  # grafana:
-  #   container_name: grafana
-  #   image: grafana/grafana-oss:latest
-  #   ports:
-  #     - 3000:3000
-  #   environment:
-  #     - GF_INSTALL_PLUGINS=grafana-mqtt-datasource
-  #   depends_on:
-  #     - mqtt-broker
-  #   volumes:
-  #     - grafana-storage:/var/lib/grafana
   
   analysis-module:
     container_name: analysis-module
     image: analysis_module:latest
     ports:
       - 5006:5000
-    # depends_on:
-    #   - mqtt-broker
   
   expression-processor:
     container_name: expression-processor
@@ -39,7 +25,6 @@ services:
       - 5007:5000
     depends_on:
       - analysis-module
-  #     - mqtt-broker
   
   heartrate-processor:
     container_name: heartrate-processor
@@ -48,7 +33,6 @@ services:
       - 3476:5000
     depends_on:
       - analysis-module
-      # - mqtt-broker
   
   linkedin-scraping:
     container_name: linkedin-scraping
@@ -56,6 +40,8 @@ services:
     ports:
       - 5000:5000 
     env_file: linkedin_scraping/.env
+    volumes:
+      - linkedin-storage:/profile-cache
   
   robot-controller:
     container_name: robot-controller
@@ -64,8 +50,7 @@ services:
       - 5001:5000 
     depends_on:
       - analysis-module
-  #     - mqtt-broker
 
 volumes:
-  grafana-storage: 
+  linkedin-storage: 
     external: true
