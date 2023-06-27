@@ -13,9 +13,10 @@ CAMERA_OFFSET = 600  # mm the camera is offset from the robot
 ROBOT_POSITION_REQUEST_OFFSET = (
     1  # Number of frames to wait before requesting robot position
 )
-ROBOT_CONTROLLER_BASE = "http://localhost:5001"
-EXPRESSION_ANALYZER_BASE_URL = "http://localhost:5007"
-ANALYSER_BASE_URL = "http://localhost:5006"
+REMOTE_IP = "192.168.1.93"
+ROBOT_CONTROLLER_BASE = "http://" + REMOTE_IP + ":5001"
+EXPRESSION_ANALYZER_BASE_URL = "http://" + REMOTE_IP + ":5007"
+ANALYSER_BASE_URL = "http://" + REMOTE_IP + ":5006"
 
 EXPRESSION_ANALYSIS_REQUEST_OFFSET = 5  # Number of frames to wait before requesting
 
