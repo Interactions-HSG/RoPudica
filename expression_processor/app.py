@@ -14,15 +14,19 @@ def analyze_image(
     align=True,
 ):
     result = {}
-    demographies = DeepFace.analyze(
-        img_path=img_path,
-        actions=actions,
-        detector_backend=detector_backend,
-        enforce_detection=enforce_detection,
-        align=align,
-    )
-    result["results"] = demographies
-    return result
+    try:
+        demographies = DeepFace.analyze(
+            img_path=img_path,
+            actions=actions,
+            detector_backend=detector_backend,
+            enforce_detection=enforce_detection,
+            align=align,
+        )
+        result["results"] = demographies
+        return result
+    except ValueError as e:
+        print(e)
+        return None
 
 
 def analysis_route_functionality(request, actions=["age", "gender", "emotion", "race"]):
@@ -35,12 +39,16 @@ def analysis_route_functionality(request, actions=["age", "gender", "emotion", "
     if img_path is None:
         return {"message": "you must pass img_path input"}
 
-    demographies = analyze_image(
-        img_path=img_path,
-        actions=actions,
-    )
+        demographies = analyze_image(
+            img_path=img_path,
+            actions=actions,
+        )
+        if demographies is None:
+            return {
+                "message": "there seems to have been an issue while analyzing the image"
+            }
 
-    return demographies
+        return demographies
 
 
 @app.route("/analyze_emotion", methods=["POST"])
@@ -62,9 +70,12 @@ def get_operator_details():
 def analyze():
     global gender, race, age
     res = analysis_route_functionality(request)
+    # TODO analyze face against db
     if res and res.get("results"):
         gender = res.get("results")[0].get("dominant_gender")
         race = res.get("results")[0].get("dominant_race")
         age = res.get("results")[0].get("age")
+        return res
+    if res and res.get("message"):
         return res
     return None

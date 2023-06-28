@@ -36,11 +36,11 @@ class Modality(object):
 
     def _get(self, url: str):
         response = requests.get(url)
-        return response.json()
+        return response
 
     def _post(self, url: str, body: dict = None):
         response = requests.post(url, json=body) if body else requests.post(url)
-        return response.json()
+        return response
 
     def _set_cooldown(self):
         now = datetime.now()

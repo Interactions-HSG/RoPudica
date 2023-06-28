@@ -175,9 +175,9 @@ def bootstrap_parameters():
             print(e)
 
     operator = "lukashueller"  # TODO get operator name from facial anaylsis module
-    print(gender, age, race)
+    print(gender, age, race, flush=True)
     experience = get_linkedIn_estimate(operator)
-    print(experience)
+    print(experience, flush=True)
     params = calculate_params(experience)
     post_bootstrapped_params(params)
 

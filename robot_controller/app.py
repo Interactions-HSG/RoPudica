@@ -137,13 +137,24 @@ def initialize_robot_params():
 
 @app.route("/params", methods=["GET"])
 def get_params():
-    return {
-        "speed_adjustment": robot_main._speed_adjustment,
-        "current_speed": robot_main._current_speed,
-        "proxemics": robot_main._current_proxemics,
-        "rotations": robot_main._additional_rotations,
-        "smoothness": robot_main._smooth,
-    }
+    if robot_main.is_param_init:
+        return {
+            "speed_adjustment": robot_main._speed_adjustment,
+            "current_speed": robot_main._current_speed,
+            "proxemics": robot_main._current_proxemics,
+            "rotations": robot_main._additional_rotations,
+            "smoothness": robot_main._smooth,
+        }
+    return dict.fromkeys(
+        [
+            "speed_adjustment",
+            "current_speed",
+            "proxemics",
+            "rotations",
+            "smoothness",
+        ],
+        0,
+    )
 
 
 if __name__ == "__main__":
