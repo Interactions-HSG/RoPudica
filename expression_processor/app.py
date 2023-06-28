@@ -8,7 +8,7 @@ gender, race, age = None, None, None
 
 def analyze_image(
     img_path,
-    actions=["age", "gender", "emotion", "race"],
+    actions,
     detector_backend="opencv",
     enforce_detection=True,
     align=True,
@@ -39,16 +39,16 @@ def analysis_route_functionality(request, actions=["age", "gender", "emotion", "
     if img_path is None:
         return {"message": "you must pass img_path input"}
 
-        demographies = analyze_image(
-            img_path=img_path,
-            actions=actions,
-        )
-        if demographies is None:
-            return {
-                "message": "there seems to have been an issue while analyzing the image"
-            }
+    demographies = analyze_image(
+        img_path=img_path,
+        actions=actions,
+    )
+    if not demographies:
+        return {
+            "message": "there seems to have been an issue while analyzing the image"
+        }
 
-        return demographies
+    return demographies
 
 
 @app.route("/analyze_emotion", methods=["POST"])
@@ -63,7 +63,7 @@ def get_operator_details():
         "gender": gender,
         "race": race,
         "age": age,
-    }
+    }, 201 if gender is not None else 200
 
 
 @app.route("/analyze", methods=["POST"])

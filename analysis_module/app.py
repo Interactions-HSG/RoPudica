@@ -9,7 +9,7 @@ import sched, time
 import requests
 import time
 
-ANALYSIS_INTERVAL = 10  # seconds
+ANALYSIS_INTERVAL = 1  # seconds
 ROBOT_CONTROLLER_URL = "http://robot-controller:5000"
 LINKEDIN_ROUTE = "http://linkedin-scraping:5000/linkedInScore"
 EXPRESSION_ANALYZER_BASE_URL = "http://expression-processor:5000"
@@ -20,40 +20,38 @@ PRODUCERS = [
         analysis_interval=0.5,
         threshold=0.001,
         handler="_handle_trend",
-        output_modalities=["speed", "smoothness", "rotation"],
-        weight=1.0,
+        output_modalities={"speed": 1.0, "smoothness": 1.0, "rotation": 1.0},
     ),
     Producer(
         "operator/distance",
-        analysis_interval=0.5,
-        threshold=0.001,
+        analysis_interval=1,
+        threshold=30,
         handler="_handle_trend",
-        output_modalities=["speed", "proxemics"],
-        weight=1.0,
+        output_modalities={"speed": 0.8, "proxemics": 1.2},
     ),
     Producer(
         "expression",
         analysis_interval=3,
         threshold=-2,
         handler=handle_expression,
-        output_modalities=["episodic_behaviour"],
-        weight=1.0,
+        output_modalities={"episodic_behaviour": 1.0},
     ),
     Producer(
         "heartrate",
         analysis_interval=60,
         threshold=0.1,
         handler="_handle_trend",
-        output_modalities=["speed", "smoothness", "rotation"],
-        weight=1.0,
+        output_modalities={"speed": 1.0, "smoothness": 1.0, "rotation": 1.0},
     ),
     Producer(
         "blinks",
         analysis_interval=300,
         threshold=0.1,
         handler="_handle_trend",
-        output_modalities=["episodic_behaviour", "rotation"],
-        weight=-1.0,  # negative weight to reverse slope analysis
+        output_modalities={
+            "episodic_behaviour": -1.0,
+            "rotation": -1.0,
+        },  # negative weight to reverse slope analysis
     ),
 ]
 PRODUCER_MAP = {producer.subscription_topic: producer for producer in PRODUCERS}
@@ -61,19 +59,19 @@ PRODUCER_MAP = {producer.subscription_topic: producer for producer in PRODUCERS}
 MODALITIES = [
     Modality(
         "speed",
-        threshold=0.1,
+        threshold=0.3,
         base_url=ROBOT_CONTROLLER_URL,
         increase_path="/increase_speed",
         decrease_path="/decrease_speed",
-        cooldown_duration=20,
+        cooldown_duration=1,
     ),
     Modality(
         "proxemics",
-        threshold=0.1,
+        threshold=0.2,
         base_url=ROBOT_CONTROLLER_URL,
         increase_path="/increase_proxemics",
         decrease_path="/decrease_proxemics",
-        cooldown_duration=20,
+        cooldown_duration=1,
     ),
     Modality(
         "smoothness",
@@ -106,9 +104,11 @@ df = pd.DataFrame(
 )
 
 # Default start values to be used with experience
-PROXEMICS_MULTIPLIER = 0.7  # results in: 1, 1, 2, 3, 4
-SPEED_MULTIPLIER = 1.7  # results in: 2, 3, 5, 7, 9
-SMOOTHNESS_THRESHOLD = 3
+PROXEMICS_MULTIPLIER = (
+    2.3  # results in: 1, 1, 2, 3, 4 # TODO have something like 3,4,5,5,5
+)
+SPEED_MULTIPLIER = 2.5  # results in: 2, 3, 5, 7, 9
+SMOOTHNESS_THRESHOLD = 3  # TODO handle that only smoothness or rotation is set
 ROTATION_THRESHOLD = 2
 
 app = Flask(__name__)
@@ -124,11 +124,12 @@ def analyse_signals():
         .mean()
     )
 
-    print(grouped, flush=True)
+    # print(grouped, flush=True)
     for index, row in grouped.iterrows():
         modality = MODALITIES_MAP.get(index, None)
         if not modality:
             continue
+        print(f"Modality: {modality.name}, threshold: {modality.threshold}", flush=True)
         if row["value"] > modality.threshold:
             modality.increase()
         elif row["value"] < -modality.threshold:
@@ -164,13 +165,12 @@ def bootstrap_parameters():
         time.sleep(1)
         try:
             response = requests.get(EXPRESSION_ANALYZER_BASE_URL + "/operator_details")
-            if response.status_code == 200:
+            if response.status_code == 201:
                 res = response.json()
                 gender = res.get("gender", None)
-                if gender is not None:
-                    race = res.get("race", None)
-                    age = res.get("age", None)
-                    break
+                race = res.get("race", None)
+                age = res.get("age", None)
+                break
         except Exception as e:
             print(e)
 
@@ -214,6 +214,67 @@ def deliver_data():
                 "response": "Data received and handled.",
             }, 200
     return {"response": "Could not associate the incoming data with any producer."}
+
+
+# add a route that allows to edit analysis_interval, threshold and output_modalities of a producer from the PRODUCER_MAP by subscription_topic
+@app.route("/producers", methods=["GET", "POST"])
+def producers():
+    if request.method == "GET":
+        return {
+            "producers": [
+                {
+                    "subscription_topic": p.subscription_topic,
+                    "analysis_interval": p._analysis_interval,
+                    "threshold": p._threshold,
+                    "output_modalities": p._modalities,
+                }
+                for p in PRODUCERS
+            ]
+        }
+    elif request.method == "POST":
+        data = request.json
+        subscription_topic = data["subscription_topic"]
+        producer = PRODUCER_MAP.get(subscription_topic, None)
+        if producer:
+            # only update the values that are in the request
+            if "analysis_interval" in data:
+                producer._analysis_interval = data["analysis_interval"]
+            if "threshold" in data:
+                producer._threshold = data["threshold"]
+            if "output_modalities" in data:
+                producer._modalities = data["output_modalities"]
+            return {"response": "Producer updated."}, 200
+        else:
+            return {"response": "Producer not found."}, 404
+
+
+# add a route similar to that for the producers, which allows to change the threshold and cooldown_duration of a modality from the MODALITIES_MAP by name
+@app.route("/modalities", methods=["GET", "POST"])
+def modalities():
+    if request.method == "GET":
+        return {
+            "modalities": [
+                {
+                    "name": m.name,
+                    "threshold": m.threshold,
+                    "cooldown_duration": m.cooldown_duration,
+                }
+                for m in MODALITIES
+            ]
+        }
+    elif request.method == "POST":
+        data = request.json
+        name = data["name"]
+        modality = MODALITIES_MAP.get(name, None)
+        if modality:
+            # only update the values that are in the request
+            if "threshold" in data:
+                modality.threshold = data["threshold"]
+            if "cooldown_duration" in data:
+                modality.cooldown_duration = data["cooldown_duration"]
+            return {"response": "Modality updated."}, 200
+        else:
+            return {"response": "Modality not found."}, 404
 
 
 if __name__ == "__main__":

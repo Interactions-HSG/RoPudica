@@ -17,8 +17,7 @@ class Producer(object):
         analysis_interval: int,
         threshold: float,
         handler: str | function,
-        output_modalities: list[ModalityLiteral],
-        weight: float = 1.0,
+        output_modalities: dict[ModalityLiteral, float],
         **kwargs,
     ):
         if len(output_modalities) == 0:
@@ -31,7 +30,6 @@ class Producer(object):
         self._threshold = threshold
         self._handler = Producer.match_function(handler)
         self._modalities = output_modalities
-        self._weight = weight
 
     @staticmethod
     def match_function(handler: str | function):
@@ -56,12 +54,12 @@ class Producer(object):
 
         value = self._handler(self._data, self._threshold)
         outputs = []
-        for modality in self._modalities:
+        for modality, weight in self._modalities.items():
             outputs.append(
                 {
                     "time": datetime.now(),
                     "output_modality": modality,
-                    "value": value * self._weight if value else 0,
+                    "value": value * weight if value else 0,
                 }
             )
 
@@ -91,6 +89,9 @@ class Producer(object):
             segments = seg.calculate_segments()
 
         slope = segments[0].slope
+        if slope > (5 * threshold) or slope < (-5 * threshold):
+            return 0
+        print(f"Current slope: {slope}, threshold: {threshold}", flush=True)
         if slope > threshold:
             return 1
         elif slope < -threshold:
