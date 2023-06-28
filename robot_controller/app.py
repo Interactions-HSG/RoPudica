@@ -105,8 +105,11 @@ def decrease_proxemics():
 
 @app.route("/add_rotations", methods=["POST"])
 def add_rotations():
-    robot_main._additional_rotations = True
-    return "Added additional rotations"
+    if robot_main._current_speed >= 6:
+        robot_main._smooth = False
+        robot_main._additional_rotations = True
+        return "Added additional rotations"
+    return "Speed is too low to add additional rotations"
 
 
 @app.route("/remove_rotations", methods=["POST"])
@@ -117,13 +120,18 @@ def remove_rotations():
 
 @app.route("/add_smoothness", methods=["POST"])
 def add_smoothness():
-    robot_main._smooth = True
-    return "Added smoothness"
+    if robot_main._current_speed <= 5 and not robot_main._smooth:
+        robot_main._additional_rotations = False
+        decrease_speed()
+        robot_main._smooth = True
+        return "Added smoothness"
+    return "Speed is too high to add smoothness or smoothness is already added"
 
 
 @app.route("/remove_smoothness", methods=["POST"])
 def remove_smoothness():
     robot_main._smooth = False
+    increase_speed()
     return "Removed smoothness"
 
 
