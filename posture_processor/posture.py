@@ -13,12 +13,14 @@ CAMERA_OFFSET = 600  # mm the camera is offset from the robot
 ROBOT_POSITION_REQUEST_OFFSET = (
     1  # Number of frames to wait before requesting robot position
 )
-REMOTE_IP = "192.168.1.93"
+REMOTE_IP = "10.2.2.173"
 ROBOT_CONTROLLER_BASE = "http://" + REMOTE_IP + ":5001"
 EXPRESSION_ANALYZER_BASE_URL = "http://" + REMOTE_IP + ":5007"
 ANALYSER_BASE_URL = "http://" + REMOTE_IP + ":5006"
 
 EXPRESSION_ANALYSIS_REQUEST_OFFSET = 5  # Number of frames to wait before requesting
+
+has_init_operator = False
 
 
 def get_landmark_distance(results, landmark_index):
@@ -63,10 +65,24 @@ def analyze_current_image_expression(image):
                 "timestamp": datetime.now().isoformat(),
                 "topic": "expression",
             }
-            requests.post(ANALYSER_BASE_URL + "/data", json=data)
+            try:
+                requests.post(ANALYSER_BASE_URL + "/data", json=data)
+            except Exception as e:
+                print(e)
 
 
 def analyze_operator(image):
+    global has_init_operator
+    if has_init_operator:
+        return
+    try:
+        response = requests.get(EXPRESSION_ANALYZER_BASE_URL + "/operator_details")
+        if response.status_code == 201:
+            has_init_operator = True
+            return
+    except Exception as e:
+        print(e)
+
     jpg_as_text = img_to_base64(image)
     # print(jpg_as_text)
     body = {"img_path": "data:image/jpeg;base64," + jpg_as_text}
@@ -174,8 +190,7 @@ with mp_holistic.Holistic(
         color_image = cv2.flip(color_image, 1)
         color_images_rgb = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
 
-        if processed_images == 1:
-            analyze_operator(color_image)
+        analyze_operator(color_image)
 
         if (processed_images + 1) % EXPRESSION_ANALYSIS_REQUEST_OFFSET == 0:
             analyze_current_image_expression(color_image)
@@ -207,19 +222,24 @@ with mp_holistic.Holistic(
                 ),
             )
 
-            # Process distance
-            if processed_images % ROBOT_POSITION_REQUEST_OFFSET == 0:
-                max_extension = get_arm_max_extension()
-                print(max_extension)
-            distance = process_proxemics(results, max_extension)
+            if has_init_operator:
+                # Process distance
+                if processed_images % ROBOT_POSITION_REQUEST_OFFSET == 0:
+                    max_extension = get_arm_max_extension()
+                    # print(max_extension)
+                distance = process_proxemics(results, max_extension)
+                print(distance)
 
-            data = {
-                "id": str(uuid.uuid4()),
-                "value": distance,
-                "timestamp": datetime.now().isoformat(),
-                "topic": "operator/distance",
-            }
-            requests.post(ANALYSER_BASE_URL + "/data", json=data)
+                data = {
+                    "id": str(uuid.uuid4()),
+                    "value": distance,
+                    "timestamp": datetime.now().isoformat(),
+                    "topic": "operator/distance",
+                }
+                try:
+                    requests.post(ANALYSER_BASE_URL + "/data", json=data)
+                except Exception as e:
+                    print(e)
 
             processed_images += 1
             images = cv2.putText(
