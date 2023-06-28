@@ -42,7 +42,7 @@ class Producer(object):
                 "Handler must be a function or an existing handler method of Producer"
             )
 
-    def handle(self, data: dict):
+    def add_data(self, data: dict):
         new_df = pd.DataFrame.from_dict([data])
         new_df.set_index(
             pd.DatetimeIndex(data=new_df["timestamp"], name="timestamp"), inplace=True
@@ -52,26 +52,13 @@ class Producer(object):
         temp_df = pd.concat([self._data, new_df])
         self._data = temp_df.last(pd.Timedelta(seconds=self._analysis_interval))
 
+    def handle(self):
         value = self._handler(self._data, self._threshold)
-        outputs = []
+        output = {}
         for modality, weight in self._modalities.items():
-            outputs.append(
-                {
-                    "time": datetime.now(),
-                    "output_modality": modality,
-                    "value": value * weight if value else 0,
-                }
-            )
+            output[modality] = value * weight if value else 0
 
-        return (
-            pd.DataFrame.from_dict(outputs)
-            .set_index(
-                pd.DatetimeIndex(
-                    name="time", data=[output["time"] for output in outputs]
-                )
-            )
-            .drop(columns=["time"])
-        )
+        return output
 
     @staticmethod
     def _handle_trend(df: pd.DataFrame, threshold: float):

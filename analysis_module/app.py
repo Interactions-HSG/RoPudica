@@ -3,13 +3,13 @@ import json
 from modality import Modality
 from producer import Producer
 from datetime import datetime, timedelta
-from further_handlers import handle_expression
+from further_handlers import handle_expression, find_spikes
 import pandas as pd
 import sched, time
 import requests
 import time
 
-ANALYSIS_INTERVAL = 1  # seconds
+ANALYSIS_INTERVAL = 3  # seconds
 ROBOT_CONTROLLER_URL = "http://robot-controller:5000"
 LINKEDIN_ROUTE = "http://linkedin-scraping:5000/linkedInScore"
 EXPRESSION_ANALYZER_BASE_URL = "http://expression-processor:5000"
@@ -38,10 +38,10 @@ PRODUCERS = [
     ),
     Producer(
         "heartrate",
-        analysis_interval=60,
+        analysis_interval=10,
         threshold=0.1,
-        handler="_handle_trend",
-        output_modalities={"speed": 1.0, "smoothness": 1.0, "rotation": 1.0},
+        handler=find_spikes,
+        output_modalities={"speed": -1.0, "smoothness": -1.0, "rotation": -1.0},
     ),
     Producer(
         "blinks",
@@ -79,7 +79,7 @@ MODALITIES = [
         base_url=ROBOT_CONTROLLER_URL,
         increase_path="/add_smoothness",
         decrease_path="/remove_smoothness",
-        cooldown_duration=20,
+        cooldown_duration=10,
     ),
     Modality(
         "rotation",
@@ -87,7 +87,7 @@ MODALITIES = [
         base_url=ROBOT_CONTROLLER_URL,
         increase_path="/add_rotations",
         decrease_path="/remove_rotations",
-        cooldown_duration=20,
+        cooldown_duration=10,
     ),
     Modality(
         "episodic_behaviour",
@@ -116,23 +116,30 @@ analysis_cooldown = datetime.now() + timedelta(seconds=ANALYSIS_INTERVAL)
 
 
 def analyse_signals():
-    global df
-    analysis_interval = df.last(pd.Timedelta(seconds=ANALYSIS_INTERVAL))
-    grouped = (
-        analysis_interval[["output_modality", "value"]]
-        .groupby("output_modality")
-        .mean()
-    )
+    # global df
+    # analysis_interval = df.last(pd.Timedelta(seconds=ANALYSIS_INTERVAL))
+    # grouped = (
+    #     analysis_interval[["output_modality", "value"]]
+    #     .groupby("output_modality")
+    #     .mean()
+    # )
+    modalities = {modality.name: 0 for modality in MODALITIES}
+    for producer in PRODUCERS:
+        singleOutputs = producer.handle()
+        for modality, value in singleOutputs.items():
+            modalities[modality] += value
+
+    print(modalities, flush=True)
 
     # print(grouped, flush=True)
-    for index, row in grouped.iterrows():
-        modality = MODALITIES_MAP.get(index, None)
+    for modality_name, value in modalities.items():
+        modality = MODALITIES_MAP.get(modality_name, None)
         if not modality:
             continue
-        print(f"Modality: {modality.name}, threshold: {modality.threshold}", flush=True)
-        if row["value"] > modality.threshold:
+
+        if value > modality.threshold:
             modality.increase()
-        elif row["value"] < -modality.threshold:
+        elif value < -modality.threshold:
             modality.decrease()
         else:
             modality.neutral()
@@ -196,11 +203,12 @@ def deliver_data():
         if producer:
             # append data to producer df and handle the data
             del data["topic"]
-            value = producer.handle(data)
+            producer.add_data(data)
+            # value = producer.handle(data)
 
-            # append handled data to global df
-            global df
-            df = pd.concat([df, value]) if df is not None else value
+            # # append handled data to global df
+            # global df
+            # df = pd.concat([df, value]) if df is not None else value
 
             global analysis_cooldown
             if analysis_cooldown < datetime.now():
@@ -278,5 +286,5 @@ def modalities():
 
 
 if __name__ == "__main__":
-    bootstrap_parameters()
+    # bootstrap_parameters()
     app.run(debug=True, host="0.0.0.0", port="5000")

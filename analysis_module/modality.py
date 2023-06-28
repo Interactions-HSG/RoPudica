@@ -51,6 +51,7 @@ class Modality(object):
             print("cooldown for {} not over, increase".format(self.name), flush=True)
             return None
         print("would increase {}".format(self.name), flush=True)
+        self._set_cooldown()
         if self.increase_method == "POST":
             result = self._post(self.base_url + self.increase_path, body)
             self._set_cooldown()
@@ -66,6 +67,7 @@ class Modality(object):
             print("cooldown for {} not over, decrease".format(self.name), flush=True)
             return None
         print("would decrease {}".format(self.name), flush=True)
+        self._set_cooldown()
         if self.decrease_method == "POST":
             result = self._post(self.base_url + self.decrease_path, body)
             self._set_cooldown()
@@ -77,16 +79,17 @@ class Modality(object):
             return result
 
     def neutral(self, body: dict = None):
-        if self._cooldown_end > datetime.now() or self.neutral_path is None:
+        if self._cooldown_end > datetime.now():
             print("cooldown for {} not over, neutral".format(self.name), flush=True)
+            return None
+        if self.neutral_path is None:
+            print("no neutral path for {}".format(self.name), flush=True)
             return None
         print("would neutral {}".format(self.name), flush=True)
         if self.neutral_method == "POST":
             result = self._post(self.base_url + self.neutral_path, body)
-            self._set_cooldown()
             return result
         else:
             # GET
             result = self._get(self.base_url + self.neutral_path)
-            self._set_cooldown()
             return result

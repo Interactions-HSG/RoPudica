@@ -3,3 +3,4 @@ pandas>=2.0.0
 trend-classifier
 requests
 Flask>=2.2.3
+scipy

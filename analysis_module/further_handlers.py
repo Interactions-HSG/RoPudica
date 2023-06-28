@@ -1,4 +1,5 @@
 import pandas as pd
+from scipy.signal import find_peaks
 
 
 def handle_expression(df: pd.DataFrame, threshold: float):
@@ -20,3 +21,22 @@ def handle_expression(df: pd.DataFrame, threshold: float):
         return 1
     else:
         return 0
+
+
+def find_spikes(df: pd.DataFrame, threshold: float):
+    values = df["value"].to_numpy()
+    # find positive and negative peaks
+    pos_peaks, _ = find_peaks(values, distance=2, threshold=threshold)
+    neg_peaks, _ = find_peaks(-values, distance=2, threshold=threshold)
+
+    pos_len = len(pos_peaks)
+    neg_len = len(neg_peaks)
+    if pos_len > 0 and neg_len > 0:
+        return 0
+    elif pos_len > 0:
+        print("positive spike", flush=True)
+        return 1
+    elif neg_len > 0:
+        print("negative spike", flush=True)
+        return -1
+    return 0
