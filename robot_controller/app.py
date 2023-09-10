@@ -63,23 +63,15 @@ def speed():
 
 @app.route("/increase_speed", methods=["POST"])
 def increase_speed():
-    current = robot_main._current_speed
-    if robot_main._speed_adjustment < current:
-        robot_main._speed_adjustment = current
-    else:
-        new = min(current + 1, 10)
-        robot_main._speed_adjustment = new
+    current = robot_main._speed_adjustment
+    robot_main._speed_adjustment = min(current + 1, 10)
     return "Increased speed"
 
 
 @app.route("/decrease_speed", methods=["POST"])
 def decrease_speed():
-    current = robot_main._current_speed
-    if robot_main._speed_adjustment > current:
-        robot_main._speed_adjustment = current
-    else:
-        new = max(current - 1, 1)
-        robot_main._speed_adjustment = new
+    current = robot_main._speed_adjustment
+    robot_main._speed_adjustment = max(current - 1, 1)
     return "Decreased speed"
 
 

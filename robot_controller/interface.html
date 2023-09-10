@@ -3,6 +3,9 @@
 
 <head>
     <title>Robot Controller</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script type="text/javascript">
         function getParams() {
             var xhttp = new XMLHttpRequest();
@@ -22,43 +25,248 @@
             xhttp.open("GET", "http://localhost:5001/params", true);
             xhttp.send();
         }
-        setInterval(getParams, 2000);
+        var chartIds = [];
+        var prevData = {};
+
+        function buildInterface(influences) {
+            mapProducersToChartColors(influences);
+            const mainContainer = document.getElementsByClassName("main")[0];
+            if (!mainContainer.hasChildNodes()) {
+                console.log('Element is empty, building the interface');
+                for (const [key, value] of Object.entries(influences)) {
+                    // key = metric name; value = object of influences
+                    if (key === "episodic_behaviour") continue;
+                    const row = document.createElement('div');
+                    row.classList.add('row');
+                    mainContainer.appendChild(row);
+
+                    const leftColumn = document.createElement('div');
+                    leftColumn.classList.add('column');
+                    leftColumn.classList.add('left');
+                    row.appendChild(leftColumn);
+
+                    const rightColumn = document.createElement('div');
+                    rightColumn.classList.add('column');
+                    rightColumn.classList.add('right');
+                    row.appendChild(rightColumn);
+
+                    datasets = []
+                    scales = {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'second',
+                                displayFormats: {
+                                    second: 'HH:mm:ss'
+                                }
+                            }
+                        },
+                    }
+                    for (const [producer, weight] of Object.entries(value)) {
+                        datasets.push({
+                            label: producer,
+                            data: [],
+                            yAxisID: producer,
+                        });
+                        scales[producer] = {
+                            type: 'linear',
+                            display: true,
+                            position: "left",
+                        }
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.id = [key, 'chart'].join('_');
+                    canvas.classList.add('diagram');
+                    leftColumn.appendChild(canvas);
+
+                    chartIds.push(canvas.id);
+
+                    new Chart(canvas, {
+                        type: 'line',
+                        data: {
+                            datasets: datasets
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: scales
+                        }
+                    });
+
+                    leftColumn.appendChild(document.createElement('br'));
+
+                    const label = document.createElement('label');
+                    label.for = key;
+                    label.style.fontWeight = 'bold';
+                    label.innerHTML = key;
+                    rightColumn.appendChild(label);
+
+                    const values = document.createElement('p');
+                    values.id = key;
+                    values.innerHTML = key;
+                    rightColumn.appendChild(values);
+
+                    mainContainer.appendChild(document.createElement('hr'));
+                }
+            }
+        }
+
+        function getCurrent() {
+            var xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function () {
+                if (this.readyState == 4 && this.status == 200) {
+                    var response = JSON.parse(this.responseText);
+                    // console.log(response);
+                    document.getElementById("proxemics").innerHTML = response.proxemics;
+                    document.getElementById("speed").innerHTML = response.current_speed + " -> " + response.speed_adjustment;
+                }
+            };
+            xhttp.open("GET", "http://localhost:5001/params", true);
+            xhttp.send();
+        }
+
+        function getData() {
+            var xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function () {
+                if (this.readyState == 4 && this.status == 200) {
+                    var response = JSON.parse(this.responseText);
+                    // console.log(response);
+                    buildInterface(response.influences);
+                    handleData(response);
+                }
+            };
+            xhttp.open("GET", "http://localhost:5006/data", true);
+            xhttp.send();
+            getCurrent();
+        }
+
+        function mapProducersToChartColors(influences) {
+            var colors = {};
+            for (const [key, value] of Object.entries(influences)) {
+                if (key === "episodic_behaviour") continue;
+                for (const [producer, weight] of Object.entries(value)) {
+                    colors[producer] = Chart.helpers.color(Chart.defaults.color).rgbString();
+                }
+            }
+            return colors;
+        }
+
+        function handleData(response) {
+            // dynamically collect relevant producers
+            producers = new Set();
+            for (const chartId of chartIds) {
+                const chart = Chart.getChart(chartId)
+                scales = JSON.parse(JSON.stringify(chart.options.scales))
+                for (const [key, value] of Object.entries(scales)) {
+                    if (key === "x") continue;
+                    producers.add(key);
+                }
+            }
+
+            // update the charts if data is different then previous
+            diff_producers = []
+            for (const producer of producers) {
+                if (prevData[producer] !== response[producer]) diff_producers.push(producer);
+            }
+            producers = diff_producers;
+            if (producers.length === 0) return;
+
+            mod_data = {}
+            for (const chartId of chartIds) {
+                const chart = Chart.getChart(chartId)
+                for (const producer of producers) {
+                    const dataset = chart.data.datasets.find(element => element.label === producer);
+                    if (dataset === undefined) continue;
+                    console.log("updating chart: " + chartId + " with producer: " + producer);
+
+                    if (mod_data[producer] !== undefined) {
+                        dataset.data = mod_data[producer];
+                        continue;
+                    }
+
+                    data = JSON.parse(response[producer])
+
+                    if (Object.keys(data["value"]).length === 0) continue;
+
+                    mod_data = []
+                    for (const [key, value] of Object.entries(data["value"])) {
+                        mod_data.push({ x: parseInt(key), y: value })
+                    }
+
+                    dataset.data = mod_data
+                    mod_data[producer] = mod_data
+                }
+                chart.update();
+            }
+
+            // for each produceer, copy the response data to prevData
+            for (const producer of producers) {
+                prevData[producer] = response[producer];
+            }
+        }
+
+        setInterval(getData, 2000);
     </script>
+
+    <style>
+        .row {
+            display: flex;
+            max-height: 30vh;
+        }
+
+        .column {
+            float: left;
+            position: relative;
+        }
+
+        .left {
+            width: 75%;
+            max-height: 20vh;
+        }
+
+        .right {
+            width: 25%;
+        }
+    </style>
 </head>
 
 <body>
     <div style="text-align: center; font-size:xx-large">
-        <div>
-            <label for="param1" style="font-weight: bold;">Speed adjustment</label>
-            <div id="speed_adjustment"></div>
-            <input id="speed_adjustment_slider" input type="range" min="1" max="10" readonly>
-        </div>
-        <br>
-        <div>
-            <label for="param2" style="font-weight: bold;">Current Speed</label>
-            <div id="current_speed"></div>
-            <input id="current_speed_slider" input type="range" min="1" max="10" readonly>
-        </div>
-        <br>
-        <div>
-            <label for="param3" style="font-weight: bold;">Proxemics</label>
-            <div id="proxemics"></div>
-            <input id="proxemics_slider" input type="range" min="1" max="10" readonly>
-        </div>
-        <br>
-        <div>
-            <label for="param4" style="font-weight: bold;">Rotations</label><br>
-            <input type="checkbox" id="rotations" readonly>
-        </div>
-        <br>
-        <div>
-            <label for="param5" style="font-weight: bold;">Smoothness</label><br>
-            <input type="checkbox" id="smoothness" readonly>
-        </div>
-        <br>
+        <div class="main"></div>
+        <hr>
         <div>
             <button type="button" style="background-color: red; color: white; font-size: xx-large;"
                 onclick="window.location.href='http://localhost:5001/stop'">STOP</button>
+        </div>
+    </div>
 </body>
+
+<script>
+    const metrics = ['speed', 'proxemics', 'smoothness'];
+    metrics.forEach(metric => {
+        const ctx = document.getElementById(metric + '_Chart');
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: '# of Votes',
+                    data: [{ x: '2016-12-25', y: 20 }, { x: '2016-12-26', y: 10 }],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+        getData(metric)
+    });
+
+</script>
 
 </html>

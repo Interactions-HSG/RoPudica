@@ -1,4 +1,5 @@
 from flask import Flask, request
+from flask_cors import CORS
 import json
 from modality import Modality
 from producer import Producer
@@ -8,8 +9,12 @@ import pandas as pd
 import sched, time
 import requests
 import time
+import logging
 
-ANALYSIS_INTERVAL = 3  # seconds
+log = logging.getLogger("werkzeug")
+log.setLevel(logging.ERROR)
+
+ANALYSIS_INTERVAL = 0.1  # seconds
 ROBOT_CONTROLLER_URL = "http://robot-controller:5000"
 LINKEDIN_ROUTE = "http://linkedin-scraping:5000/linkedInScore"
 EXPRESSION_ANALYZER_BASE_URL = "http://expression-processor:5000"
@@ -25,9 +30,9 @@ PRODUCERS = [
     Producer(
         "operator/distance",
         analysis_interval=1,
-        threshold=30,
+        threshold=5,
         handler="_handle_trend",
-        output_modalities={"speed": 0.8, "proxemics": 1.2},
+        output_modalities={"speed": 1.2, "proxemics": 1.2},
     ),
     Producer(
         "expression",
@@ -41,7 +46,11 @@ PRODUCERS = [
         analysis_interval=10,
         threshold=0.1,
         handler=find_spikes,
-        output_modalities={"speed": -1.0, "smoothness": -1.0, "rotation": -1.0},
+        output_modalities={
+            "speed": -1.0,
+            "smoothness": -1.0,
+            "rotation": -1.0,
+        },  # negative weight to reverse slope analysis
     ),
     Producer(
         "blinks",
@@ -63,7 +72,7 @@ MODALITIES = [
         base_url=ROBOT_CONTROLLER_URL,
         increase_path="/increase_speed",
         decrease_path="/decrease_speed",
-        cooldown_duration=1,
+        cooldown_duration=0.5,
     ),
     Modality(
         "proxemics",
@@ -71,7 +80,7 @@ MODALITIES = [
         base_url=ROBOT_CONTROLLER_URL,
         increase_path="/increase_proxemics",
         decrease_path="/decrease_proxemics",
-        cooldown_duration=1,
+        cooldown_duration=0.5,
     ),
     Modality(
         "smoothness",
@@ -102,6 +111,7 @@ MODALITIES_MAP = {modality.name: modality for modality in MODALITIES}
 df = pd.DataFrame(
     columns=["output_modality", "value"], index=pd.DatetimeIndex(name="time", data=[])
 )
+last_analysed_data = {}
 
 # Default start values to be used with experience
 PROXEMICS_MULTIPLIER = (
@@ -112,37 +122,49 @@ SMOOTHNESS_THRESHOLD = 3  # TODO handle that only smoothness or rotation is set
 ROTATION_THRESHOLD = 2
 
 app = Flask(__name__)
+CORS(app)
 analysis_cooldown = datetime.now() + timedelta(seconds=ANALYSIS_INTERVAL)
 
 
+def get_influences():
+    modalities = {modality.name: {} for modality in MODALITIES}
+    for producer in PRODUCERS:
+        for modality, value in producer._modalities.items():
+            if modality in modalities:
+                modalities[modality][producer.subscription_topic] = value
+    return modalities
+
+
 def analyse_signals():
-    # global df
-    # analysis_interval = df.last(pd.Timedelta(seconds=ANALYSIS_INTERVAL))
-    # grouped = (
-    #     analysis_interval[["output_modality", "value"]]
-    #     .groupby("output_modality")
-    #     .mean()
-    # )
     modalities = {modality.name: 0 for modality in MODALITIES}
+    analysed_data = {producer.subscription_topic: {} for producer in PRODUCERS}
     for producer in PRODUCERS:
         singleOutputs = producer.handle()
+        analysed_data[producer.subscription_topic] = producer._data.to_json()
         for modality, value in singleOutputs.items():
-            modalities[modality] += value
+            if modality in modalities:
+                modalities[modality] += value
 
     print(modalities, flush=True)
 
-    # print(grouped, flush=True)
+    publish_data = False
     for modality_name, value in modalities.items():
         modality = MODALITIES_MAP.get(modality_name, None)
         if not modality:
             continue
 
         if value > modality.threshold:
+            publish_data = True
             modality.increase()
         elif value < -modality.threshold:
+            publish_data = True
             modality.decrease()
         else:
             modality.neutral()
+
+    if publish_data:
+        global last_analysed_data
+        last_analysed_data = analysed_data
 
 
 def get_linkedIn_estimate(operator: str):
@@ -181,7 +203,7 @@ def bootstrap_parameters():
         except Exception as e:
             print(e)
 
-    operator = "lukashueller"  # TODO get operator name from facial anaylsis module
+    operator = "kayerikjenss"  # TODO get operator name from facial anaylsis module
     print(gender, age, race, flush=True)
     experience = get_linkedIn_estimate(operator)
     print(experience, flush=True)
@@ -195,8 +217,14 @@ def _set_cooldown():
     analysis_cooldown = now + timedelta(seconds=ANALYSIS_INTERVAL)
 
 
-@app.route("/data", methods=["POST"])
-def deliver_data():
+@app.route("/data", methods=["GET", "POST"])
+def data():
+    if request.method == "GET":
+        global last_analysed_data
+        last_analysed_data["influences"] = get_influences()
+        print(last_analysed_data, flush=True)
+        return last_analysed_data
+
     if request.json:
         data = request.json
         producer = PRODUCER_MAP.get(data["topic"], None)
@@ -224,7 +252,6 @@ def deliver_data():
     return {"response": "Could not associate the incoming data with any producer."}
 
 
-# add a route that allows to edit analysis_interval, threshold and output_modalities of a producer from the PRODUCER_MAP by subscription_topic
 @app.route("/producers", methods=["GET", "POST"])
 def producers():
     if request.method == "GET":
@@ -256,7 +283,6 @@ def producers():
             return {"response": "Producer not found."}, 404
 
 
-# add a route similar to that for the producers, which allows to change the threshold and cooldown_duration of a modality from the MODALITIES_MAP by name
 @app.route("/modalities", methods=["GET", "POST"])
 def modalities():
     if request.method == "GET":

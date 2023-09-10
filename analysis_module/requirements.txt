@@ -4,3 +4,4 @@ trend-classifier
 requests
 Flask>=2.2.3
 scipy
+flask-cors
