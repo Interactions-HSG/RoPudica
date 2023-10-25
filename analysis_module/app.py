@@ -19,6 +19,8 @@ ROBOT_CONTROLLER_URL = "http://robot-controller:5000"
 LINKEDIN_ROUTE = "http://linkedin-scraping:5000/linkedInScore"
 EXPRESSION_ANALYZER_BASE_URL = "http://expression-processor:5000"
 
+USE_LINKEDIN = False # Ob das Tool LinkedIn nutzen soll für die Initialisierung oder nicht
+
 PRODUCERS = [
     Producer(
         "pupil",
@@ -189,25 +191,38 @@ def calculate_params(experience: int):
     return params
 
 
-def bootstrap_parameters():
-    while True:
-        time.sleep(1)
-        try:
-            response = requests.get(EXPRESSION_ANALYZER_BASE_URL + "/operator_details")
-            if response.status_code == 201:
-                res = response.json()
-                gender = res.get("gender", None)
-                race = res.get("race", None)
-                age = res.get("age", None)
-                break
-        except Exception as e:
-            print(e)
+def init_params_no_linkedIn():
+    # Wenn LinkedIn Komponente nicht genutzt wird, werden diese Standardwerte genutzt
+    params = {
+        "speed": 5,
+        "proxemics": 5,
+        "smoothness": 5,
+    }
+    return params
 
-    operator = "kayerikjenss"  # TODO get operator name from facial anaylsis module
-    print(gender, age, race, flush=True)
-    experience = get_linkedIn_estimate(operator)
-    print(experience, flush=True)
-    params = calculate_params(experience)
+
+def bootstrap_parameters():
+    if USE_LINKEDIN:
+        while True:
+            time.sleep(1)
+            try:
+                response = requests.get(EXPRESSION_ANALYZER_BASE_URL + "/operator_details")
+                if response.status_code == 201:
+                    res = response.json()
+                    gender = res.get("gender", None)
+                    race = res.get("race", None)
+                    age = res.get("age", None)
+                    break
+            except Exception as e:
+                print(e)
+
+        operator = "kayerikjenss"  # TODO get operator name from facial anaylsis module
+        print(gender, age, race, flush=True)
+        experience = get_linkedIn_estimate(operator)
+        print(experience, flush=True)
+        params = calculate_params(experience)
+    else: 
+        params = init_params_no_linkedIn()
     post_bootstrapped_params(params)
 
 
@@ -312,5 +327,5 @@ def modalities():
 
 
 if __name__ == "__main__":
-    # bootstrap_parameters()
+    bootstrap_parameters()
     app.run(debug=True, host="0.0.0.0", port="5000")
