@@ -6,7 +6,7 @@ WORKDIR /python-docker
 RUN apt-get update && apt-get install ffmpeg libsm6 libxext6 -y
 COPY app.py app.py
 
-COPY ./weights/*.h5 /root/.deepface/weights/
+#COPY ./weights/*.h5 /root/.deepface/weights/
 
 RUN pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host=files.pythonhosted.org deepface
 

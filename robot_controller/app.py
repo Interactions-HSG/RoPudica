@@ -1,16 +1,14 @@
 import os
-from dotenv import load_dotenv
 from flask import Flask, request
 from flask_cors import CORS
 from xarm import version
 from xarm.wrapper import XArmAPI
 from robot import RobotMain
 
-load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
-ROBOT_IP = os.getenv("ROBOT_IP")
+ROBOT_IP = "130.82.171.8"
 RobotMain.pprint("xArm-Python-SDK Version:{}".format(version.__version__))
 arm = XArmAPI(ROBOT_IP, baud_checkset=False)
 robot_main = RobotMain(arm)

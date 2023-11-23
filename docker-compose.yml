@@ -34,14 +34,14 @@ services:
     depends_on:
       - analysis-module
   
-  linkedin-scraping:
-    container_name: linkedin-scraping
-    image: linkedin_scraping:latest
-    ports:
-      - 5000:5000 
-    env_file: linkedin_scraping/.env
-    volumes:
-      - linkedin-storage:/profile-cache
+  # linkedin-scraping:
+  #   container_name: linkedin-scraping
+  #   image: linkedin_scraping:latest
+  #   ports:
+  #     - 5000:5000 
+  #   env_file: linkedin_scraping/.env
+  #   volumes:
+  #     - linkedin-storage:/profile-cache
   
   robot-controller:
     container_name: robot-controller

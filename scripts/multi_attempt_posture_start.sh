@@ -1,11 +1,11 @@
 cd ./posture_processor
-source posture/bin/activate
+# source posture/bin/activate
 
 max_iteration=50
 
 for i in $(seq 1 $max_iteration)
 do
-  python3 posture.py
+  python posture.py
   result=$?
   if [[ $result -eq 0 ]]
   then
