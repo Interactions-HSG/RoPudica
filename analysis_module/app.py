@@ -17,7 +17,7 @@ log.setLevel(logging.ERROR)
 ANALYSIS_INTERVAL = 0.1  # seconds
 ROBOT_CONTROLLER_URL = "http://10.22.22.1:5001"
 LINKEDIN_ROUTE = "http://linkedin-scraping:5000/linkedInScore"
-EXPRESSION_ANALYZER_BASE_URL = "http://130.82.171.217:5000"
+EXPRESSION_ANALYZER_BASE_URL = "http://130.82.171.217:5007"
 
 PRODUCERS = [
     Producer(
