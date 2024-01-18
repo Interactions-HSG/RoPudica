@@ -48,9 +48,9 @@ class Modality(object):
 
     def increase(self, body: dict = None):
         if self._cooldown_end > datetime.now():
-            print("cooldown for {} not over, increase".format(self.name), flush=True)
+            print("{}: Cooldown not over, increase".format(self.name), flush=True)
             return None
-        print("would increase {}".format(self.name), flush=True)
+        print("{}: Would increase".format(self.name), flush=True)
         self._set_cooldown()
         if self.increase_method == "POST":
             result = self._post(self.base_url + self.increase_path, body)
@@ -64,9 +64,9 @@ class Modality(object):
 
     def decrease(self, body: dict = None):
         if self._cooldown_end > datetime.now():
-            print("cooldown for {} not over, decrease".format(self.name), flush=True)
+            print("{}: Cooldown not over, decrease".format(self.name), flush=True)
             return None
-        print("would decrease {}".format(self.name), flush=True)
+        print("{}: Would decrease".format(self.name), flush=True)
         self._set_cooldown()
         if self.decrease_method == "POST":
             result = self._post(self.base_url + self.decrease_path, body)
@@ -80,12 +80,12 @@ class Modality(object):
 
     def neutral(self, body: dict = None):
         if self._cooldown_end > datetime.now():
-            print("cooldown for {} not over, neutral".format(self.name), flush=True)
+            print("{}: Cooldown for not over, neutral".format(self.name), flush=True)
             return None
         if self.neutral_path is None:
-            print("no neutral path for {}".format(self.name), flush=True)
+            print("{}: No neutral path for".format(self.name), flush=True)
             return None
-        print("would neutral {}".format(self.name), flush=True)
+        print("{}: Would neutralize".format(self.name), flush=True)
         if self.neutral_method == "POST":
             result = self._post(self.base_url + self.neutral_path, body)
             return result

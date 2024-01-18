@@ -53,6 +53,7 @@ class Producer(object):
         self._data = temp_df.last(pd.Timedelta(seconds=self._analysis_interval))
 
     def handle(self):
+        
         value = self._handler(self._data, self._threshold)
         output = {}
         for modality, weight in self._modalities.items():

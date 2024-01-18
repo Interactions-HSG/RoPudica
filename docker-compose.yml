@@ -26,13 +26,13 @@ services:
     depends_on:
       - analysis-module
   
-  heartrate-processor:
-    container_name: heartrate-processor
-    image: heartrate_processor:latest
-    ports:
-      - 3476:5000
-    depends_on:
-      - analysis-module
+  # heartrate-processor:
+  #   container_name: heartrate-processor
+  #   image: heartrate_processor:latest
+  #   ports:
+  #     - 3476:5000
+  #   depends_on:
+  #     - analysis-module
   
   # linkedin-scraping:
   #   container_name: linkedin-scraping

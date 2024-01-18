@@ -7,6 +7,7 @@ import numpy as np
 from datetime import datetime
 import requests
 import base64
+import time
 
 CONSIDER_ROBOT_POSITION = True
 CAMERA_OFFSET = 600  # mm the camera is offset from the robot
@@ -157,6 +158,7 @@ with mp_holistic.Holistic(
     min_detection_confidence=0.5, min_tracking_confidence=0.5
 ) as holistic:
     while True:
+        time.sleep(0.10)
         start_time = datetime.today().timestamp()
 
         # Get and align frames
@@ -237,7 +239,8 @@ with mp_holistic.Holistic(
                     "topic": "operator/distance",
                 }
                 try:
-                    requests.post(ANALYSER_BASE_URL + "/data", json=data)
+                    res = requests.post(ANALYSER_BASE_URL + "/data", json=data)
+                    print("Response from Analyzer: ", res.status_code, res.content)
                 except Exception as e:
                     print(e)
 

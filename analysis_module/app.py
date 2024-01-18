@@ -136,16 +136,35 @@ def get_influences():
 
 
 def analyse_signals():
+
     modalities = {modality.name: 0 for modality in MODALITIES}
     analysed_data = {producer.subscription_topic: {} for producer in PRODUCERS}
     for producer in PRODUCERS:
         singleOutputs = producer.handle()
+
+        # This is manually handling the distance aspect
+        # if producer.subscription_topic == "operator/distance":
+        #     log.error("Manually handling distance")
+
+        #     log.error(producer._data.to_json())
+        #     last_distance = producer._data.value[-1]
+        #     log.error("Last speed recorded " + str(last_distance))
+
+        #     log.error(singleOutputs)
+        #     if last_distance > 1000:
+        #         singleOutputs["speed"] = 1
+        #     elif last_distance < 500:
+        #         singleOutputs["speed"] = -1
+        #     else:
+        #         singleOutputs = 0
+    
+        log.error("2a. " + str(producer.subscription_topic) + " handler output: " + str(singleOutputs))
         analysed_data[producer.subscription_topic] = producer._data.to_json()
         for modality, value in singleOutputs.items():
             if modality in modalities:
                 modalities[modality] += value
 
-    print(modalities, flush=True)
+    log.error("3. Handling modalities\n\n")
 
     publish_data = False
     for modality_name, value in modalities.items():
@@ -161,6 +180,9 @@ def analyse_signals():
             modality.decrease()
         else:
             modality.neutral()
+
+
+    log.error("\n\n4. Done handling modalities")
 
     if publish_data:
         global last_analysed_data
@@ -219,6 +241,7 @@ def _set_cooldown():
 
 @app.route("/data", methods=["GET", "POST"])
 def data():
+    
     if request.method == "GET":
         global last_analysed_data
         last_analysed_data["influences"] = get_influences()
@@ -227,7 +250,11 @@ def data():
 
     if request.json:
         data = request.json
+
         producer = PRODUCER_MAP.get(data["topic"], None)
+
+        log.error("1. Received new data for " + str(data["topic"]))
+        
         if producer:
             # append data to producer df and handle the data
             del data["topic"]
