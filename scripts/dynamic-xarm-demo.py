@@ -6,7 +6,8 @@ import mediapipe as mp
 import cv2
 import numpy as np
 from datetime import datetime
-MAX_SPEED = 200
+MAX_SPEED = 100
+SPEED_CONVERT = 3
 current_speed=50
 
 def robot_init(arm):
@@ -22,7 +23,7 @@ def adjust_to_human(arm, human_distance):
     current_pos = arm.get_position(is_radian=False)[1]
 
     # Don't do any adjustments if the robot arm is not far extended
-    if current_pos[0] <= 300:
+    if current_pos[0] <= 320:
         return False
     absolute_distance = human_distance - current_pos[0]
     if absolute_distance < TOLERANCE:
@@ -33,7 +34,7 @@ def adjust_to_human(arm, human_distance):
         # Move a bit further back to avoid too many adjustments
         move_back_amount = TOLERANCE - absolute_distance + 30
         print("Moving robot x to: ", current_pos[0]-move_back_amount)
-        arm.set_position(x=current_pos[0]-move_back_amount, y=current_pos[1], z=current_pos[2], roll=current_pos[3], pitch=current_pos[4], yaw=current_pos[5], is_radian=False, wait=True, speed=current_speed)
+        arm.set_position(x=max(current_pos[0]-move_back_amount, 300), y=current_pos[1], z=current_pos[2], roll=current_pos[3], pitch=current_pos[4], yaw=current_pos[5], is_radian=False, wait=True, speed=current_speed*10)
         return True
     # if absolute_distance > MAX_TOLERANCE:
     #     print("Too far from the robot: ", absolute_distance)
@@ -51,33 +52,35 @@ def adjust_to_human(arm, human_distance):
 # Returns True if the curren episode is still running
 def execute_episode_one_step(arm, step, speed):
     if step == 1:
-        arm.set_servo_angle(angle=[-104.2, -12.2, -9.5, 48.3, -0.9, 59.8, -114], speed=speed, is_radian=False, wait=False, radius=-1.0)
+        arm.set_servo_angle(angle=[-104.2, -12.2, -9.5, 48.3, -0.9, 59.8, -114.0], speed=speed, is_radian=False, wait=False, radius=-1.0)
     elif step == 2:
-        arm.set_servo_angle(angle=[-114.5, 48.2, 12.7, 109.1, -3.4, 62.2, -106.4], speed=speed, is_radian=False, wait=False, radius=-1.0)
+        arm.set_servo_angle(angle=[-109.1, 43.9, 4.9, 127.8, 3.0, 84.5, -107.9], speed=speed, is_radian=False, wait=False, radius=-1.0)
     elif step == 3:
-        arm.set_servo_angle(angle=[-98.5, 72.6, -45.5, 140.3, -87.7, -33.4, 22.1], speed=speed, is_radian=False, wait=False, radius=-1.0)
+        arm.set_servo_angle(angle=[-99.1, 65.0, -53.3, 149.0, -89.8, -33.1, 33.7], speed=speed, is_radian=False, wait=False, radius=-1.0)
     elif step == 4:
-        arm.set_servo_angle(angle=[-117.6, 68.7, -46.4, 137.2, -135.6, -81, 32.2], speed=speed, is_radian=False, wait=False, radius=-1.0)
+        arm.set_servo_angle(angle=[-131.2, 21.0, -17.8, 89.0, -170.1, -66.6, 32.2], speed=speed, is_radian=False, wait=False, radius=-1.0)
     elif step == 5:
-        arm.set_servo_angle(angle=[-140.1, 41.4, 36.1, 101.2, -21.9, 67.5, -105.5], speed=speed, is_radian=False, wait=False, radius=-1.0)
+        arm.set_servo_angle(angle=[-129.2, 35.9, 23.3, 117.7, -10.7, 84.2, -111.8], speed=speed, is_radian=False, wait=False, radius=-1.0)
     elif step == 6:
-        arm.set_servo_angle(angle=[-109.8, 61.1, 2.3, 141.8, 1.6, 80.3, -112.6], speed=speed, is_radian=False, wait=False, radius=-1.0)
+        arm.set_servo_angle(angle=[-113.2, 38.7, 3.4, 115.1, 1.6, 77.1, -113.3], speed=speed, is_radian=False, wait=False, radius=-1.0)
     else:
         return False
     return True
 
 def execute_episode_two_step(arm, step, speed):
     if step == 1:
-        arm.set_position(*[1.4, -714.6, 87.8, 178.1, -0.9, 3.2], speed=speed*3, radius=70.0, is_radian=False, wait=False)
+        arm.set_servo_angle(angle=[-89.5, 59.6, -1.8, 134.2, 2.7, 72.8, -94.3], speed=speed, is_radian=False, wait=False, radius=-1.0)
     elif step == 2:
-        arm.set_position(*[337.3, -581.7, 101.7, 179.1, -2.1, 2.0], speed=speed*3, radius=70.0, is_radian=False, wait=False)
+        arm.set_servo_angle(angle=[-59.1, 44.9, -2.0, 110.7, 3.2, 64.1, -63.8], speed=speed, is_radian=False, wait=False, radius=-1.0)
     elif step == 3:
-        arm.set_position(*[464.8, -373.4, 97.4, -179.8, -4.2, 1.8], speed=speed*3, radius=70.0, is_radian=False, wait=False)
+        arm.set_servo_angle(angle=[-39.1, 28.0, -0.9, 81.9, 4.3, 51.0, -44.3], speed=speed, is_radian=False, wait=False, radius=-1.0)
     elif step == 4:
         arm.set_position(*[299.5, -5.5, 146.3, 178.4, -4.9, -0.1], speed=speed*3, radius=70.0, is_radian=False, wait=False)
     elif step == 5:
-        arm.set_servo_angle(angle=[-7.1, -15.0, 7.8, 12.3, 0.8, 22.2, -0.1], speed=speed, is_radian=False, wait=False, radius=-1.0)
-    elif step == 6:
+        arm.set_servo_angle(angle=[-7.8, -35.5, 7.9, 20.6, 4.0, 50.9, -3.3], speed=speed, is_radian=False, wait=False, radius=-1.0)
+        arm.set_gripper_position(549, wait=True, speed=5000, auto_enable=True)
+        arm.set_servo_angle(angle=[-4.0, -24.4, 4.4, 14.2, 0.3, 33.5, 0.0], speed=speed, is_radian=False, wait=False, radius=-1.0)
+        arm.set_gripper_position(270, wait=True, speed=5000, auto_enable=True)
         arm.set_servo_angle(angle=[-3.9, -36.5, 4.0, 22.0, 1.0, 53.5, -1.1], speed=speed, is_radian=False, wait=False, radius=-1.0)
     else:
         return False
@@ -85,13 +88,13 @@ def execute_episode_two_step(arm, step, speed):
 
 def execute_episode_three_a_step(arm, step, speed):
     if step == 1:
-        arm.set_position(*[299.5, -5.5, 146.3, 178.4, -4.9, -0.1], speed=speed*3, radius=20.0, is_radian=False, wait=False)
+        arm.set_servo_angle(angle=[-3.9, -36.5, 4.0, 22.0, 1.0, 53.5, -1.1], speed=speed, is_radian=False, wait=False, radius=-1.0)
     elif step == 2:
-        arm.set_position(*[464.8, -373.4, 97.4, -179.8, -4.2, 1.8], speed=speed*3, radius=20.0, is_radian=False, wait=False)
+        arm.set_servo_angle(angle=[-25.7, 23.7, -17.3, 88.8, 11.1, 63.6, -48.0], speed=speed, is_radian=False, wait=False, radius=-1.0)
     elif step == 3:
-        arm.set_position(*[337.3, -581.7, 101.7, 179.1, -2.1, 2.0], speed=speed*3, radius=20.0, is_radian=False, wait=False)
+        arm.set_servo_angle(angle=[-54.0, 43.5, -12.2, 124.9, 10.0, 80.5, -66.3], speed=speed, is_radian=False, wait=False, radius=-1.0)
     elif step == 4:
-        arm.set_position(*[1.4, -714.6, 87.8, 178.1, -0.9, 3.2], speed=speed*3, radius=20.0, is_radian=False, wait=False)
+        arm.set_servo_angle(angle=[-84.0, 42.2, -9.8, 117.9, 11.5, 76.1, -95.5], speed=speed, is_radian=False, wait=False, radius=-1.0)
     elif step == 5:
         arm.set_servo_angle(angle=[-97.0, -14.0, -15.8, 51.9, -2.9, 65.0, -112.2], speed=speed, is_radian=False, wait=False, radius=-1.0)
     elif step == 6:
@@ -105,18 +108,16 @@ def execute_episode_three_a_step(arm, step, speed):
 
 def execute_episode_three_b_step(arm, step, speed):
     if step == 1:
-        arm.set_position(*[51.0, 426.1, 117.7, -179.7, -5.8, 0.9], speed=speed*3, radius=20.0, is_radian=False, wait=False)
+        arm.set_servo_angle(angle=[-2.1, -34.9, 1.6, 64.7, -0.6, 94.6, -0.8], speed=speed, is_radian=False, wait=False, radius=-1.0)
     elif step == 2:
-        arm.set_position(*[-311.2, 317.5, 112.7, 178.5, 2.8, 3.0], speed=speed*3, radius=20.0, is_radian=False, wait=False)
+        arm.set_servo_angle(angle=[-42.5, -39.7, -22.3, 60.8, -27.6, 50.5, 5.7], speed=speed, is_radian=False, wait=False, radius=-1.0)
     elif step == 3:
-        arm.set_position(*[-405.9, -158.8, 111.7, -179.5, 1.7, 1.6], speed=speed*3, radius=20.0, is_radian=False, wait=False)
+        arm.set_servo_angle(angle=[-73.9, -19.9, -37.6, 48.9, -12.3, 63.9, -11.8], speed=speed, is_radian=False, wait=False, radius=-1.0)
     elif step == 4:
-        arm.set_position(*[-260.1, -440.7, 158.9, 178.7, -0.6, 1.4], speed=speed*3, radius=20.0, is_radian=False, wait=False)
+        arm.set_servo_angle(angle=[-81.2, -4.5, -32.8, 40.1, -1.8, 43.4, -113.6], speed=speed, is_radian=False, wait=True, radius=-1.0)
     elif step == 5:
-        arm.set_position(*[-260.1, -440.7, 73.5, 178.7, -0.6, 1.4], speed=speed*3, radius=20.0, is_radian=False, wait=False)
         arm.set_gripper_position(549, wait=True, speed=5000, auto_enable=True)
-        arm.set_position(*[-260.1, -440.7, 158.9, 178.7, -0.6, 1.4], speed=speed*3, radius=20.0, is_radian=False, wait=False)
-        arm.set_gripper_position(100, wait=True, speed=5000, auto_enable=True)
+        arm.set_servo_angle(angle=[-70.4, -17.9, -39.8, 51.9, -11.2, 65.6, -105.2], speed=speed, is_radian=False, wait=False, radius=-1.0)
     else:
         return False
     return True
@@ -255,6 +256,8 @@ with mp_holistic.Holistic(
                     current_episode = 2
                     current_step = 0
             elif current_episode == 2:
+                if human_distance > 450 and current_step == 4:
+                    current_step = 5
                 if execute_episode_two_step(arm, current_step, current_speed) == False:
                     if human_distance < 400:
                         current_episode = 4
