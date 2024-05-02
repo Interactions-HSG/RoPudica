@@ -1,4 +1,5 @@
 from time import sleep
+from time import time
 import keyboard
 from xarm.wrapper import XArmAPI
 import pyrealsense2 as rs
@@ -6,7 +7,7 @@ import mediapipe as mp
 import cv2
 import numpy as np
 from datetime import datetime
-MAX_SPEED = 100
+MAX_SPEED = 150 #300 for high-speed
 SPEED_CONVERT = 3
 current_speed=50
 
@@ -69,18 +70,20 @@ def execute_episode_one_step(arm, step, speed):
 
 def execute_episode_two_step(arm, step, speed):
     if step == 1:
-        arm.set_servo_angle(angle=[-89.5, 59.6, -1.8, 134.2, 2.7, 72.8, -94.3], speed=speed, is_radian=False, wait=False, radius=-1.0)
+        arm.set_servo_angle(angle=[-89.5, 59.6, -1.8, 134.2, 2.7, 72.8, -94.3], speed=speed*0.6, is_radian=False, wait=False, radius=-1.0)
     elif step == 2:
-        arm.set_servo_angle(angle=[-59.1, 44.9, -2.0, 110.7, 3.2, 64.1, -63.8], speed=speed, is_radian=False, wait=False, radius=-1.0)
+        arm.set_servo_angle(angle=[-59.1, 44.9, -2.0, 110.7, 3.2, 64.1, -63.8], speed=speed*0.6, is_radian=False, wait=False, radius=-1.0)
     elif step == 3:
-        arm.set_servo_angle(angle=[-39.1, 28.0, -0.9, 81.9, 4.3, 51.0, -44.3], speed=speed, is_radian=False, wait=False, radius=-1.0)
+        arm.set_servo_angle(angle=[-39.1, 28.0, -0.9, 81.9, 4.3, 51.0, -44.3], speed=speed*0.6, is_radian=False, wait=False, radius=-1.0)
     elif step == 4:
-        arm.set_position(*[299.5, -5.5, 146.3, 178.4, -4.9, -0.1], speed=speed*3, radius=70.0, is_radian=False, wait=False)
+        arm.set_position(*[299.5, -5.5, 146.3, 178.4, -4.9, -0.1], speed=speed*7, radius=70.0, is_radian=False, wait=False)
+        #arm.set_servo_angle(angle=[-3.5, -35.2, 3.6, 20.5, 0.6, 50.8, -0.7], speed=speed*0.6, is_radian=False, wait=False, radius=-1.0)
     elif step == 5:
         arm.set_servo_angle(angle=[-7.8, -35.5, 7.9, 20.6, 4.0, 50.9, -3.3], speed=speed, is_radian=False, wait=False, radius=-1.0)
         arm.set_gripper_position(549, wait=True, speed=5000, auto_enable=True)
+    elif step == 6:
         arm.set_servo_angle(angle=[-4.0, -24.4, 4.4, 14.2, 0.3, 33.5, 0.0], speed=speed, is_radian=False, wait=False, radius=-1.0)
-        arm.set_gripper_position(270, wait=True, speed=5000, auto_enable=True)
+        arm.set_gripper_position(270, wait=False, speed=5000, auto_enable=True)
         arm.set_servo_angle(angle=[-3.9, -36.5, 4.0, 22.0, 1.0, 53.5, -1.1], speed=speed, is_radian=False, wait=False, radius=-1.0)
     else:
         return False
@@ -126,7 +129,11 @@ arm = XArmAPI("130.82.171.8", baud_checkset=False)
 robot_init(arm)
 current_step = 0
 current_episode = 1
-human_distance = 1000
+human_distance = 400
+last_measurements = [400,400,400]
+start_time = time()
+two_down_move_timer = time()
+executed_two = False
 
 ## Initialize Cam
 
@@ -235,12 +242,31 @@ with mp_holistic.Holistic(
         results = holistic.process(color_images_rgb)
         if results.face_landmarks and results.pose_landmarks:
             # Process distance
-            human_distance = process_proxemics(results)-750
-            print(human_distance)
+            estimated_distance = process_proxemics(results)-750
+            print("Measured: ", estimated_distance)
+            #Check for outliers
+            if estimated_distance > 200 and estimated_distance < 2000:
+                last_measurements.pop(0)
+                last_measurements.append(estimated_distance)
+                human_distance = np.average(last_measurements)
+            print("Average: ", human_distance)
+            print("array: ", last_measurements)
+        
+        # print(time()-start_time)
+        if time()-start_time < 15:
+            current_episode = 1
+        elif executed_two == False:
+            print("Moving to step two")
+            two_down_move_timer = time()
+            executed_two = True
+            arm.set_state(4)
+            arm.set_state(0)
+            current_episode = 2
+            current_step = 0
         
         # Adjust speed
         if human_distance < 300:
-            current_speed = 0.2*MAX_SPEED
+            current_speed = 0.3*MAX_SPEED
         elif human_distance < 600:
             current_speed = 0.5*MAX_SPEED
         elif human_distance < 1000:
@@ -258,7 +284,18 @@ with mp_holistic.Holistic(
             elif current_episode == 2:
                 if human_distance > 450 and current_step == 4:
                     current_step = 5
-                if execute_episode_two_step(arm, current_step, current_speed) == False:
+                # Check if x seconds have elapsed since ending episode 1
+                print(time()-two_down_move_timer)
+                if current_step == 6:
+                    if time()-two_down_move_timer > 10:
+                        execute_episode_two_step(arm, current_step, current_speed)
+                        if human_distance < 400:
+                            current_episode = 4
+                        else:
+                            current_episode = 3
+                        current_step = 0
+                    current_step = 5
+                elif (execute_episode_two_step(arm, current_step, current_speed) == False) and (current_step != 6):
                     if human_distance < 400:
                         current_episode = 4
                     else:
