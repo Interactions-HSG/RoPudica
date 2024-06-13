@@ -10,6 +10,7 @@ from datetime import datetime
 MAX_SPEED = 150 #300 for high-speed
 SPEED_CONVERT = 3
 current_speed=50
+adaptive=False
 
 def robot_init(arm):
     arm.clean_warn()
@@ -19,6 +20,8 @@ def robot_init(arm):
     arm.set_state(0)
 
 def adjust_to_human(arm, human_distance):
+    if not adaptive:
+        return False
     TOLERANCE = 50
     MAX_TOLERANCE = 130
     current_pos = arm.get_position(is_radian=False)[1]
@@ -121,9 +124,25 @@ def execute_episode_three_b_step(arm, step, speed):
     elif step == 5:
         arm.set_gripper_position(549, wait=True, speed=5000, auto_enable=True)
         arm.set_servo_angle(angle=[-70.4, -17.9, -39.8, 51.9, -11.2, 65.6, -105.2], speed=speed, is_radian=False, wait=False, radius=-1.0)
+    # elif step == 6:
+    #     arm.set_servo_angle(angle=[-81.2, -4.5, -32.8, 40.1, -1.8, 43.4, -113.6], speed=speed, is_radian=False, wait=True, radius=-1.0)
+    #     arm.set_gripper_position(549, wait=True, speed=5000, auto_enable=True)
+    #     arm.set_servo_angle(angle=[-97.0, -14.0, -15.8, 51.9, -2.9, 65.0, -112.2], speed=speed, is_radian=False, wait=True, radius=-1.0)
+    #     arm.set_gripper_position(100, wait=True, speed=5000, auto_enable=True)
     else:
         return False
     return True
+
+def new_iteration():
+    iterations += 1
+    if iterations >= 0:
+        input("Press Enter to continue...")
+        adaptive = not adaptive
+        iterations = 0
+        
+
+CONSECUTIVE_ITERATIONS = 2
+iterations = 0
 
 arm = XArmAPI("130.82.171.8", baud_checkset=False)
 robot_init(arm)
@@ -131,6 +150,7 @@ current_step = 0
 current_episode = 1
 human_distance = 400
 last_measurements = [400,400,400]
+input("Press Enter to continue...")
 start_time = time()
 two_down_move_timer = time()
 executed_two = False
@@ -253,19 +273,26 @@ with mp_holistic.Holistic(
             print("array: ", last_measurements)
         
         # print(time()-start_time)
-        if time()-start_time < 15:
+
+        # Different timer for adaptive and non-adaptive
+        episode_one_timer = 25
+        if adaptive:
+            episode_one_timer = 20
+        if time()-start_time < episode_one_timer:
             current_episode = 1
         elif executed_two == False:
             print("Moving to step two")
             two_down_move_timer = time()
             executed_two = True
-            arm.set_state(4)
-            arm.set_state(0)
+            # arm.set_state(4)
+            # arm.set_state(0)
             current_episode = 2
             current_step = 0
         
         # Adjust speed
-        if human_distance < 300:
+        if not adaptive:
+            current_speed = MAX_SPEED
+        elif human_distance < 300:
             current_speed = 0.3*MAX_SPEED
         elif human_distance < 600:
             current_speed = 0.5*MAX_SPEED
@@ -287,14 +314,18 @@ with mp_holistic.Holistic(
                 # Check if x seconds have elapsed since ending episode 1
                 print(time()-two_down_move_timer)
                 if current_step == 6:
-                    if time()-two_down_move_timer > 10:
+                    episode_two_timer = 5
+                    if adaptive:
+                        episode_two_timer = 10
+                    if time()-two_down_move_timer > episode_two_timer:
                         execute_episode_two_step(arm, current_step, current_speed)
-                        if human_distance < 400:
+                        if human_distance < 400 and adaptive:
                             current_episode = 4
                         else:
                             current_episode = 3
                         current_step = 0
-                    current_step = 5
+                    else:
+                        current_step = 5
                 elif (execute_episode_two_step(arm, current_step, current_speed) == False) and (current_step != 6):
                     if human_distance < 400:
                         current_episode = 4
@@ -303,11 +334,25 @@ with mp_holistic.Holistic(
                     current_step = 0
             elif current_episode == 3:
                 if execute_episode_three_a_step(arm, current_step, current_speed) == False:
+                    iterations += 1
+                    if iterations >= CONSECUTIVE_ITERATIONS:
+                        input("Press Enter to continue...")
+                        adaptive = not adaptive
+                        iterations = 0
+                    start_time = time()
+                    executed_two = False
                     current_step = 0
                     current_episode = 1
                     # exit()
             elif current_episode == 4:
                 if execute_episode_three_b_step(arm, current_step, current_speed) == False:
+                    iterations += 1
+                    if iterations >= CONSECUTIVE_ITERATIONS:
+                        input("Press Enter to continue...")
+                        adaptive = not adaptive
+                        iterations = 0
+                    start_time = time()
+                    executed_two = False
                     current_step = 0
                     current_episode = 1
                     # exit()
