@@ -7,10 +7,12 @@ import mediapipe as mp
 import cv2
 import numpy as np
 from datetime import datetime
+import csv
+from random import randrange
 MAX_SPEED = 150 #300 for high-speed
 SPEED_CONVERT = 3
 current_speed=50
-adaptive=False
+adaptive=True
 
 def robot_init(arm):
     arm.clean_warn()
@@ -236,158 +238,166 @@ print(f"\tConfiguration Successful for SN {device}")
 
 # ====== Get and process images ======
 print(f"Starting to capture images on SN: {device}")
+
+participant_nr = randrange(100000)
+
 processed_images = 0
-with mp_holistic.Holistic(
-    min_detection_confidence=0.5, min_tracking_confidence=0.5
-) as holistic:
-    while True:
-        # Calculate Distance
-        # Get and align frames
-        frames = pipeline.wait_for_frames()
-        aligned_frames = align.process(frames)
-        aligned_depth_frame = aligned_frames.get_depth_frame()
-        color_frame = aligned_frames.get_color_frame()
+with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerow(["Time", "Distance", "Episode", "Step", "Speed"])
+    with mp_holistic.Holistic(
+        min_detection_confidence=0.5, min_tracking_confidence=0.5
+    ) as holistic:
+        while True:
+            # Calculate Distance
+            # Get and align frames
+            frames = pipeline.wait_for_frames()
+            aligned_frames = align.process(frames)
+            aligned_depth_frame = aligned_frames.get_depth_frame()
+            color_frame = aligned_frames.get_color_frame()
 
-        if not aligned_depth_frame or not color_frame:
-            continue
+            if not aligned_depth_frame or not color_frame:
+                continue
 
-        # Process images
-        depth_image = np.asanyarray(aligned_depth_frame.get_data())
-        depth_image_flipped = cv2.flip(depth_image, 1)
-        color_image = np.asanyarray(color_frame.get_data())
-        color_image = cv2.flip(color_image, 1)
-        color_images_rgb = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
+            # Process images
+            depth_image = np.asanyarray(aligned_depth_frame.get_data())
+            depth_image_flipped = cv2.flip(depth_image, 1)
+            color_image = np.asanyarray(color_frame.get_data())
+            color_image = cv2.flip(color_image, 1)
+            color_images_rgb = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
 
-        # Process pose
-        results = holistic.process(color_images_rgb)
-        if results.face_landmarks and results.pose_landmarks:
-            # Process distance
-            estimated_distance = process_proxemics(results)-750
-            print("Measured: ", estimated_distance)
-            #Check for outliers
-            if estimated_distance > 200 and estimated_distance < 2000:
-                last_measurements.pop(0)
-                last_measurements.append(estimated_distance)
-                human_distance = np.average(last_measurements)
-            print("Average: ", human_distance)
-            print("array: ", last_measurements)
-        
-        # print(time()-start_time)
+            # Process pose
+            results = holistic.process(color_images_rgb)
+            estimated_distance = -1
+            if results.face_landmarks and results.pose_landmarks:
+                # Process distance
+                estimated_distance = process_proxemics(results)-750
+                print("Measured: ", estimated_distance)
+                #Check for outliers
+                if estimated_distance > 200 and estimated_distance < 2000:
+                    last_measurements.pop(0)
+                    last_measurements.append(estimated_distance)
+                    human_distance = np.average(last_measurements)
+                print("Average: ", human_distance)
+                print("array: ", last_measurements)
+            
+            # print(time()-start_time)
 
-        # Different timer for adaptive and non-adaptive
-        episode_one_timer = 25
-        if adaptive:
-            episode_one_timer = 20
-        if time()-start_time < episode_one_timer:
-            current_episode = 1
-        elif executed_two == False:
-            print("Moving to step two")
-            two_down_move_timer = time()
-            executed_two = True
-            # arm.set_state(4)
-            # arm.set_state(0)
-            current_episode = 2
-            current_step = 0
-        
-        # Adjust speed
-        if not adaptive:
-            current_speed = MAX_SPEED
-        elif human_distance < 300:
-            current_speed = 0.3*MAX_SPEED
-        elif human_distance < 600:
-            current_speed = 0.5*MAX_SPEED
-        elif human_distance < 1000:
-            current_speed = 0.8*MAX_SPEED
-        else:
-            current_speed = MAX_SPEED
-        
-        if arm.get_is_moving() == False:
-            current_step += 1
-            print("Executing episode ", current_episode, ", step ", current_step)
-            if current_episode == 1:
-                if execute_episode_one_step(arm, current_step, current_speed) == False:
-                    current_episode = 2
-                    current_step = 0
-            elif current_episode == 2:
-                if human_distance > 450 and current_step == 4:
-                    current_step = 5
-                # Check if x seconds have elapsed since ending episode 1
-                print(time()-two_down_move_timer)
-                if current_step == 6:
-                    episode_two_timer = 5
-                    if adaptive:
-                        episode_two_timer = 10
-                    if time()-two_down_move_timer > episode_two_timer:
-                        execute_episode_two_step(arm, current_step, current_speed)
-                        if human_distance < 400 and adaptive:
+            # Different timer for adaptive and non-adaptive
+            episode_one_timer = 25
+            if adaptive:
+                episode_one_timer = 20
+            if time()-start_time < episode_one_timer:
+                current_episode = 1
+            elif executed_two == False:
+                print("Moving to step two")
+                two_down_move_timer = time()
+                executed_two = True
+                # arm.set_state(4)
+                # arm.set_state(0)
+                current_episode = 2
+                current_step = 0
+            
+            # Adjust speed
+            if not adaptive:
+                current_speed = MAX_SPEED
+            elif human_distance < 300:
+                current_speed = 0.3*MAX_SPEED
+            elif human_distance < 600:
+                current_speed = 0.5*MAX_SPEED
+            elif human_distance < 1000:
+                current_speed = 0.8*MAX_SPEED
+            else:
+                current_speed = MAX_SPEED
+            
+            if arm.get_is_moving() == False:
+                current_step += 1
+                print("Executing episode ", current_episode, ", step ", current_step)
+                if current_episode == 1:
+                    if execute_episode_one_step(arm, current_step, current_speed) == False:
+                        current_episode = 2
+                        current_step = 0
+                elif current_episode == 2:
+                    if human_distance > 450 and current_step == 4:
+                        current_step = 5
+                    # Check if x seconds have elapsed since ending episode 1
+                    print(time()-two_down_move_timer)
+                    if current_step == 6:
+                        episode_two_timer = 5
+                        if adaptive:
+                            episode_two_timer = 10
+                        if time()-two_down_move_timer > episode_two_timer:
+                            execute_episode_two_step(arm, current_step, current_speed)
+                            if human_distance < 400 and adaptive:
+                                current_episode = 4
+                            else:
+                                current_episode = 3
+                            current_step = 0
+                        else:
+                            current_step = 5
+                    elif (execute_episode_two_step(arm, current_step, current_speed) == False) and (current_step != 6):
+                        if human_distance < 400:
                             current_episode = 4
                         else:
                             current_episode = 3
                         current_step = 0
-                    else:
-                        current_step = 5
-                elif (execute_episode_two_step(arm, current_step, current_speed) == False) and (current_step != 6):
-                    if human_distance < 400:
-                        current_episode = 4
-                    else:
-                        current_episode = 3
-                    current_step = 0
-            elif current_episode == 3:
-                if execute_episode_three_a_step(arm, current_step, current_speed) == False:
-                    iterations += 1
-                    if iterations >= CONSECUTIVE_ITERATIONS:
-                        input("Press Enter to continue...")
-                        adaptive = not adaptive
-                        iterations = 0
-                    start_time = time()
-                    executed_two = False
-                    current_step = 0
-                    current_episode = 1
-                    # exit()
-            elif current_episode == 4:
-                if execute_episode_three_b_step(arm, current_step, current_speed) == False:
-                    iterations += 1
-                    if iterations >= CONSECUTIVE_ITERATIONS:
-                        input("Press Enter to continue...")
-                        adaptive = not adaptive
-                        iterations = 0
-                    start_time = time()
-                    executed_two = False
-                    current_step = 0
-                    current_episode = 1
-                    # exit()
-        if keyboard.is_pressed("w"):
-            # move closer to robotd
-            human_distance -= 60
-            print("Current Distance: ", human_distance)
-            sleep(0.2)
-        if keyboard.is_pressed("s"):
-            # move further away from robot
-            human_distance += 60
-            print("Current Distance: ", human_distance)
-            sleep(0.2)
-        if keyboard.is_pressed("a"):
-            # Decrease speed
-            current_speed -= 60
-            print("Decreasing speed to : ", current_speed)
-            sleep(0.2)
-        if keyboard.is_pressed("d"):
-            # Increase speed
-            current_speed += 60
-            print("Increasing speed to : ", current_speed)
-            sleep(0.2)
-        if adjust_to_human(arm,human_distance):
-            if current_episode == 3 and current_step == 2:
-                current_step = current_step
-            elif current_episode == 3 and current_step == 3:
-                current_step = 3
-            elif current_episode == 2 and current_step == 2:
-                current_step = 3
-            elif current_episode == 2 and current_step == 3:
-                current_step = 3
-            else:
-                current_step -= 1
-        if keyboard.is_pressed("q"):
-            # Key was pressed
-            break
+                elif current_episode == 3:
+                    if execute_episode_three_a_step(arm, current_step, current_speed) == False:
+                        iterations += 1
+                        if iterations >= CONSECUTIVE_ITERATIONS:
+                            input("Press Enter to continue...")
+                            adaptive = not adaptive
+                            iterations = 0
+                        start_time = time()
+                        executed_two = False
+                        current_step = 0
+                        current_episode = 1
+                        # exit()
+                elif current_episode == 4:
+                    if execute_episode_three_b_step(arm, current_step, current_speed) == False:
+                        iterations += 1
+                        if iterations >= CONSECUTIVE_ITERATIONS:
+                            input("Press Enter to continue...")
+                            adaptive = not adaptive
+                            iterations = 0
+                        start_time = time()
+                        executed_two = False
+                        current_step = 0
+                        current_episode = 1
+                        # exit()
+            if keyboard.is_pressed("w"):
+                # move closer to robotd
+                human_distance -= 60
+                print("Current Distance: ", human_distance)
+                sleep(0.2)
+            if keyboard.is_pressed("s"):
+                # move further away from robot
+                human_distance += 60
+                print("Current Distance: ", human_distance)
+                sleep(0.2)
+            if keyboard.is_pressed("a"):
+                # Decrease speed
+                current_speed -= 60
+                print("Decreasing speed to : ", current_speed)
+                sleep(0.2)
+            if keyboard.is_pressed("d"):
+                # Increase speed
+                current_speed += 60
+                print("Increasing speed to : ", current_speed)
+                sleep(0.2)
+            if adjust_to_human(arm,human_distance):
+                if current_episode == 3 and current_step == 2:
+                    current_step = current_step
+                elif current_episode == 3 and current_step == 3:
+                    current_step = 3
+                elif current_episode == 2 and current_step == 2:
+                    current_step = 3
+                elif current_episode == 2 and current_step == 3:
+                    current_step = 3
+                else:
+                    current_step -= 1
+            if keyboard.is_pressed("q"):
+                # Key was pressed
+                break
+            writer.writerow([time(), estimated_distance, current_episode, current_step, current_speed])
         
