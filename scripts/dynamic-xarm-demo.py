@@ -138,12 +138,11 @@ def execute_episode_three_b_step(arm, step, speed):
 def new_iteration():
     iterations += 1
     if iterations >= 0:
-        input("Press Enter to continue...")
         adaptive = not adaptive
         iterations = 0
         
 
-CONSECUTIVE_ITERATIONS = 2
+CONSECUTIVE_ITERATIONS = 3
 iterations = 0
 
 arm = XArmAPI("130.82.171.8", baud_checkset=False)
@@ -244,7 +243,7 @@ participant_nr = randrange(100000)
 processed_images = 0
 with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
     writer = csv.writer(f)
-    writer.writerow(["Time", "Distance", "Episode", "Step", "Speed"])
+    writer.writerow(["Time", "Distance", "Average Distance", "Episode", "Step", "Speed", "X", "Y", "Z", "Pitch", "Yaw", "Roll", "is adaptive?"])
     with mp_holistic.Holistic(
         min_detection_confidence=0.5, min_tracking_confidence=0.5
     ) as holistic:
@@ -269,7 +268,7 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
             # Process pose
             results = holistic.process(color_images_rgb)
             estimated_distance = -1
-            if results.face_landmarks and results.pose_landmarks:
+            if results.pose_landmarks:
                 # Process distance
                 estimated_distance = process_proxemics(results)-750
                 print("Measured: ", estimated_distance)
@@ -284,7 +283,7 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
             # print(time()-start_time)
 
             # Different timer for adaptive and non-adaptive
-            episode_one_timer = 25
+            episode_one_timer = 30
             if adaptive:
                 episode_one_timer = 20
             if time()-start_time < episode_one_timer:
@@ -325,7 +324,7 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
                     if current_step == 6:
                         episode_two_timer = 5
                         if adaptive:
-                            episode_two_timer = 10
+                            episode_two_timer = 15
                         if time()-two_down_move_timer > episode_two_timer:
                             execute_episode_two_step(arm, current_step, current_speed)
                             if human_distance < 400 and adaptive:
@@ -344,8 +343,8 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
                 elif current_episode == 3:
                     if execute_episode_three_a_step(arm, current_step, current_speed) == False:
                         iterations += 1
+                        input("Press Enter to continue...")
                         if iterations >= CONSECUTIVE_ITERATIONS:
-                            input("Press Enter to continue...")
                             adaptive = not adaptive
                             iterations = 0
                         start_time = time()
@@ -356,35 +355,14 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
                 elif current_episode == 4:
                     if execute_episode_three_b_step(arm, current_step, current_speed) == False:
                         iterations += 1
+                        input("Press Enter to continue...")
                         if iterations >= CONSECUTIVE_ITERATIONS:
-                            input("Press Enter to continue...")
                             adaptive = not adaptive
                             iterations = 0
                         start_time = time()
                         executed_two = False
                         current_step = 0
                         current_episode = 1
-                        # exit()
-            if keyboard.is_pressed("w"):
-                # move closer to robotd
-                human_distance -= 60
-                print("Current Distance: ", human_distance)
-                sleep(0.2)
-            if keyboard.is_pressed("s"):
-                # move further away from robot
-                human_distance += 60
-                print("Current Distance: ", human_distance)
-                sleep(0.2)
-            if keyboard.is_pressed("a"):
-                # Decrease speed
-                current_speed -= 60
-                print("Decreasing speed to : ", current_speed)
-                sleep(0.2)
-            if keyboard.is_pressed("d"):
-                # Increase speed
-                current_speed += 60
-                print("Increasing speed to : ", current_speed)
-                sleep(0.2)
             if adjust_to_human(arm,human_distance):
                 if current_episode == 3 and current_step == 2:
                     current_step = current_step
@@ -399,5 +377,6 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
             if keyboard.is_pressed("q"):
                 # Key was pressed
                 break
-            writer.writerow([time(), estimated_distance, current_episode, current_step, current_speed])
+            current_pos = arm.get_position(is_radian=False)[1]
+            writer.writerow([time(), estimated_distance, human_distance, current_episode, current_step, current_speed, current_pos[0], current_pos[1], current_pos[2], current_pos[3], current_pos[4], current_pos[5], adaptive])
         
