@@ -62,7 +62,7 @@ def execute_episode_one_step(arm, step, speed):
     elif step == 2:
         arm.set_servo_angle(angle=[-109.1, 43.9, 4.9, 127.8, 3.0, 84.5, -107.9], speed=speed, is_radian=False, wait=False, radius=-1.0)
     elif step == 3:
-        arm.set_servo_angle(angle=[-99.1, 65.0, -53.3, 149.0, -89.8, -33.1, 33.7], speed=speed, is_radian=False, wait=False, radius=-1.0)
+        arm.set_servo_angle(angle=[-88.7, 54.7, -53.3, 167.8, -89.8, -33.1, 33.7], speed=speed, is_radian=False, wait=False, radius=-1.0)
     elif step == 4:
         arm.set_servo_angle(angle=[-131.2, 21.0, -17.8, 89.0, -170.1, -66.6, 32.2], speed=speed, is_radian=False, wait=False, radius=-1.0)
     elif step == 5:
@@ -142,7 +142,7 @@ def new_iteration():
         iterations = 0
         
 
-CONSECUTIVE_ITERATIONS = 3
+CONSECUTIVE_ITERATIONS = 1
 iterations = 0
 
 arm = XArmAPI("130.82.171.8", baud_checkset=False)
@@ -155,7 +155,10 @@ input("Press Enter to continue...")
 start_time = time()
 two_down_move_timer = time()
 executed_two = False
-
+is_playing = True
+played_adaptive = False
+played_regular = False
+total_iterations = 0
 ## Initialize Cam
 
 CONSIDER_ROBOT_POSITION = True
@@ -283,9 +286,9 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
             # print(time()-start_time)
 
             # Different timer for adaptive and non-adaptive
-            episode_one_timer = 30
+            episode_one_timer = 17
             if adaptive:
-                episode_one_timer = 20
+                episode_one_timer = 17
             if time()-start_time < episode_one_timer:
                 current_episode = 1
             elif executed_two == False:
@@ -322,9 +325,9 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
                     # Check if x seconds have elapsed since ending episode 1
                     print(time()-two_down_move_timer)
                     if current_step == 6:
-                        episode_two_timer = 5
+                        episode_two_timer = 18
                         if adaptive:
-                            episode_two_timer = 15
+                            episode_two_timer = 18
                         if time()-two_down_move_timer > episode_two_timer:
                             execute_episode_two_step(arm, current_step, current_speed)
                             if human_distance < 400 and adaptive:
@@ -342,11 +345,15 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
                         current_step = 0
                 elif current_episode == 3:
                     if execute_episode_three_a_step(arm, current_step, current_speed) == False:
-                        iterations += 1
-                        input("Press Enter to continue...")
-                        if iterations >= CONSECUTIVE_ITERATIONS:
-                            adaptive = not adaptive
-                            iterations = 0
+                        if not is_playing:
+                            iterations += 1
+                            total_iterations += 1
+                            if total_iterations >= 2*CONSECUTIVE_ITERATIONS:
+                                break
+                            input("Press Enter to continue...")
+                            if iterations >= CONSECUTIVE_ITERATIONS:
+                                adaptive = not adaptive
+                                iterations = 0
                         start_time = time()
                         executed_two = False
                         current_step = 0
@@ -354,11 +361,15 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
                         # exit()
                 elif current_episode == 4:
                     if execute_episode_three_b_step(arm, current_step, current_speed) == False:
-                        iterations += 1
-                        input("Press Enter to continue...")
-                        if iterations >= CONSECUTIVE_ITERATIONS:
-                            adaptive = not adaptive
-                            iterations = 0
+                        if not is_playing:
+                            iterations += 1
+                            total_iterations += 1
+                            if total_iterations > 2*CONSECUTIVE_ITERATIONS:
+                                break
+                            input("Press Enter to continue...")
+                            if iterations >= CONSECUTIVE_ITERATIONS:
+                                adaptive = not adaptive
+                                iterations = 0
                         start_time = time()
                         executed_two = False
                         current_step = 0
@@ -377,6 +388,25 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
             if keyboard.is_pressed("q"):
                 # Key was pressed
                 break
+            if keyboard.is_pressed("p"):
+                # Key was pressed
+                if adaptive:
+                    played_adaptive = True
+                    input("Switching to playing non-adaptive...")
+                else:
+                    played_regular = True
+                    input("Switching to playing adaptive...")
+                if played_regular and played_adaptive:
+                    adaptive = not adaptive
+                    is_playing = False
+                    execute_episode_one_step(arm, 1, current_speed)
+                    input("Press Enter to continue...")
+                    start_time = time()
+                    executed_two = False
+                    current_step = 0
+                    current_episode = 1
+                else:
+                    adaptive = not adaptive
             current_pos = arm.get_position(is_radian=False)[1]
             writer.writerow([time(), estimated_distance, human_distance, current_episode, current_step, current_speed, current_pos[0], current_pos[1], current_pos[2], current_pos[3], current_pos[4], current_pos[5], adaptive])
         
