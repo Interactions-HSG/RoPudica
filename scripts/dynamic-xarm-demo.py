@@ -12,7 +12,7 @@ from random import randrange
 MAX_SPEED = 150 #300 for high-speed
 SPEED_CONVERT = 3
 current_speed=50
-adaptive=True
+adaptive=False
 
 def robot_init(arm):
     arm.clean_warn()
@@ -350,7 +350,14 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
                             total_iterations += 1
                             if total_iterations >= 2*CONSECUTIVE_ITERATIONS:
                                 break
-                            input("Press Enter to continue...")
+                            print("Pressy Enter to continue...")
+                            while True:
+                                sleep(0.1)
+                                if keyboard.is_pressed("enter"):
+                                    # Key was pressed
+                                    break
+                                current_pos = arm.get_position(is_radian=False)[1]
+                                writer.writerow([time(), estimated_distance, human_distance, 0, 0, 0, current_pos[0], current_pos[1], current_pos[2], current_pos[3], current_pos[4], current_pos[5], adaptive])
                             if iterations >= CONSECUTIVE_ITERATIONS:
                                 adaptive = not adaptive
                                 iterations = 0
@@ -364,9 +371,16 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
                         if not is_playing:
                             iterations += 1
                             total_iterations += 1
-                            if total_iterations > 2*CONSECUTIVE_ITERATIONS:
+                            if total_iterations >= 2*CONSECUTIVE_ITERATIONS:
                                 break
-                            input("Press Enter to continue...")
+                            print("Press Enter to continue...")
+                            while True:
+                                sleep(0.1)
+                                if keyboard.is_pressed("enter"):
+                                    # Key was pressed
+                                    break
+                                current_pos = arm.get_position(is_radian=False)[1]
+                                writer.writerow([time(), estimated_distance, human_distance, 0, 0, 0, current_pos[0], current_pos[1], current_pos[2], current_pos[3], current_pos[4], current_pos[5], adaptive])
                             if iterations >= CONSECUTIVE_ITERATIONS:
                                 adaptive = not adaptive
                                 iterations = 0
@@ -392,15 +406,37 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
                 # Key was pressed
                 if adaptive:
                     played_adaptive = True
-                    input("Switching to playing non-adaptive...")
+                    print("Switching to playing non-adaptive... Press Enter to continue")
+                    while True:
+                        sleep(0.1)
+                        if keyboard.is_pressed("enter"):
+                            # Key was pressed
+                            break
+                        current_pos = arm.get_position(is_radian=False)[1]
+                        writer.writerow([time(), estimated_distance, human_distance, 0, 0, 0, current_pos[0], current_pos[1], current_pos[2], current_pos[3], current_pos[4], current_pos[5], adaptive])
                 else:
                     played_regular = True
-                    input("Switching to playing adaptive...")
+                    print("Switching to playing adaptive... Press Enter to continue")
+                    while True:
+                        sleep(0.1)
+                        if keyboard.is_pressed("enter"):
+                            # Key was pressed
+                            break
+                        current_pos = arm.get_position(is_radian=False)[1]
+                        writer.writerow([time(), estimated_distance, human_distance, 0, 0, 0, current_pos[0], current_pos[1], current_pos[2], current_pos[3], current_pos[4], current_pos[5], adaptive])
                 if played_regular and played_adaptive:
                     adaptive = not adaptive
                     is_playing = False
                     execute_episode_one_step(arm, 1, current_speed)
-                    input("Press Enter to continue...")
+                    sleep(3)
+                    print("Press Enter to continue...")
+                    while True:
+                        sleep(0.1)
+                        if keyboard.is_pressed("enter"):
+                            # Key was pressed
+                            break
+                        current_pos = arm.get_position(is_radian=False)[1]
+                        writer.writerow([time(), estimated_distance, human_distance, 0, 0, 0, current_pos[0], current_pos[1], current_pos[2], current_pos[3], current_pos[4], current_pos[5], adaptive])
                     start_time = time()
                     executed_two = False
                     current_step = 0
@@ -408,5 +444,6 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
                 else:
                     adaptive = not adaptive
             current_pos = arm.get_position(is_radian=False)[1]
-            writer.writerow([time(), estimated_distance, human_distance, current_episode, current_step, current_speed, current_pos[0], current_pos[1], current_pos[2], current_pos[3], current_pos[4], current_pos[5], adaptive])
+            if current_step != 0:
+                writer.writerow([time(), estimated_distance, human_distance, current_episode, current_step, current_speed, current_pos[0], current_pos[1], current_pos[2], current_pos[3], current_pos[4], current_pos[5], adaptive])
         
