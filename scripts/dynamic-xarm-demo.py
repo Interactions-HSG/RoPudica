@@ -9,11 +9,25 @@ import numpy as np
 from datetime import datetime
 import csv
 from random import randrange
-MAX_SPEED = 150 #300 for high-speed
-SPEED_CONVERT = 3
-current_speed=50
-adaptive=False
 
+# Adjustable parameters: 
+# The maximum speed that is used by the adaptive and non-adaptive robot
+MAX_SPEED = 150
+# Specify if the sequence should start with adaptive or non-adaptive movement
+adaptive=False
+# Decides how many times adaptive/non-adaptive should repeat itself before switching
+CONSECUTIVE_ITERATIONS = 1
+# IP of the xArm-7
+XARM_IP = "130.82.171.8"
+# Decides how long episode 1 should last for
+EPISODE_ONE_TIMER = 17
+# Decides how long episode 2 should last/wait for
+EPISODE_TWO_TIMER = 18
+# If true, allows the user to experience a repeating adaptive and non-adaptive variant of the robot in order to get accustomed to it.
+# This can be quit with by pressing 'p' key.
+IS_PLAYING = True
+
+# Initialize robot so that movement commands can be used
 def robot_init(arm):
     arm.clean_warn()
     arm.clean_error()
@@ -21,6 +35,7 @@ def robot_init(arm):
     arm.set_mode(0)
     arm.set_state(0)
 
+# Move the robot back a bit if the human is too close
 def adjust_to_human(arm, human_distance):
     if not adaptive:
         return False
@@ -42,20 +57,10 @@ def adjust_to_human(arm, human_distance):
         print("Moving robot x to: ", current_pos[0]-move_back_amount)
         arm.set_position(x=max(current_pos[0]-move_back_amount, 300), y=current_pos[1], z=current_pos[2], roll=current_pos[3], pitch=current_pos[4], yaw=current_pos[5], is_radian=False, wait=True, speed=current_speed*10)
         return True
-    # if absolute_distance > MAX_TOLERANCE:
-    #     print("Too far from the robot: ", absolute_distance)
-    #     # Stop and resume
-    #     arm.set_state(4)
-    #     arm.set_state(0)
-    #     # Move a bit further back to avoid too many adjustments
-    #     move_forward_amount = absolute_distance - 80
-    #     new_x = min(current_pos[0]+move_forward_amount, 400)
-    #     print("Moving robot x to: ", new_x)
-    #     arm.set_position(x=new_x, y=current_pos[1], z=current_pos[2], roll=current_pos[3], pitch=current_pos[4], yaw=current_pos[5], is_radian=False, wait=True, speed=current_speed)
-    #     return True
     return False
 
-# Returns True if the curren episode is still running
+# Move the robot around in the back. Repeats for some time in order to simulate it working on another task.
+# Returns True if the current episode is still running and returns false as soon as all steps have been completed.
 def execute_episode_one_step(arm, step, speed):
     if step == 1:
         arm.set_servo_angle(angle=[-104.2, -12.2, -9.5, 48.3, -0.9, 59.8, -114.0], speed=speed, is_radian=False, wait=False, radius=-1.0)
@@ -73,6 +78,8 @@ def execute_episode_one_step(arm, step, speed):
         return False
     return True
 
+# Move the gripper from the back to the front of the robot and attempt to pick up the object after waiting some time.
+# Returns True if the current episode is still running and returns false as soon as all steps have been completed.
 def execute_episode_two_step(arm, step, speed):
     if step == 1:
         arm.set_servo_angle(angle=[-89.5, 59.6, -1.8, 134.2, 2.7, 72.8, -94.3], speed=speed*0.6, is_radian=False, wait=False, radius=-1.0)
@@ -82,7 +89,6 @@ def execute_episode_two_step(arm, step, speed):
         arm.set_servo_angle(angle=[-39.1, 28.0, -0.9, 81.9, 4.3, 51.0, -44.3], speed=speed*0.6, is_radian=False, wait=False, radius=-1.0)
     elif step == 4:
         arm.set_position(*[299.5, -5.5, 146.3, 178.4, -4.9, -0.1], speed=speed*7, radius=70.0, is_radian=False, wait=False)
-        #arm.set_servo_angle(angle=[-3.5, -35.2, 3.6, 20.5, 0.6, 50.8, -0.7], speed=speed*0.6, is_radian=False, wait=False, radius=-1.0)
     elif step == 5:
         arm.set_servo_angle(angle=[-7.8, -35.5, 7.9, 20.6, 4.0, 50.9, -3.3], speed=speed, is_radian=False, wait=False, radius=-1.0)
         arm.set_gripper_position(549, wait=True, speed=5000, auto_enable=True)
@@ -94,6 +100,9 @@ def execute_episode_two_step(arm, step, speed):
         return False
     return True
 
+# Move gripper back and drop an object in the box. Is only executed if the user is >= 40 cm away from the robot.
+# Moves back in the same way it approached the object in episode 2.
+# Returns True if the current episode is still running and returns false as soon as all steps have been completed.
 def execute_episode_three_a_step(arm, step, speed):
     if step == 1:
         arm.set_servo_angle(angle=[-3.9, -36.5, 4.0, 22.0, 1.0, 53.5, -1.1], speed=speed, is_radian=False, wait=False, radius=-1.0)
@@ -114,6 +123,10 @@ def execute_episode_three_a_step(arm, step, speed):
         return False
     return True
 
+
+# Move gripper back and drop an object in the box. Also known as episode 4 and is only executed if the user is < 40 cm away from the robot.
+# Moves adaptively and very closely to the robot's centre point in order to avoid swinging and colliding the user.
+# Returns True if the current episode is still running and returns false as soon as all steps have been completed.
 def execute_episode_three_b_step(arm, step, speed):
     if step == 1:
         arm.set_servo_angle(angle=[-2.1, -34.9, 1.6, 64.7, -0.6, 94.6, -0.8], speed=speed, is_radian=False, wait=False, radius=-1.0)
@@ -126,11 +139,6 @@ def execute_episode_three_b_step(arm, step, speed):
     elif step == 5:
         arm.set_gripper_position(549, wait=True, speed=5000, auto_enable=True)
         arm.set_servo_angle(angle=[-70.4, -17.9, -39.8, 51.9, -11.2, 65.6, -105.2], speed=speed, is_radian=False, wait=False, radius=-1.0)
-    # elif step == 6:
-    #     arm.set_servo_angle(angle=[-81.2, -4.5, -32.8, 40.1, -1.8, 43.4, -113.6], speed=speed, is_radian=False, wait=True, radius=-1.0)
-    #     arm.set_gripper_position(549, wait=True, speed=5000, auto_enable=True)
-    #     arm.set_servo_angle(angle=[-97.0, -14.0, -15.8, 51.9, -2.9, 65.0, -112.2], speed=speed, is_radian=False, wait=True, radius=-1.0)
-    #     arm.set_gripper_position(100, wait=True, speed=5000, auto_enable=True)
     else:
         return False
     return True
@@ -141,26 +149,29 @@ def new_iteration():
         adaptive = not adaptive
         iterations = 0
         
-
-CONSECUTIVE_ITERATIONS = 1
+# Initialize parameters with default values
 iterations = 0
-
-arm = XArmAPI("130.82.171.8", baud_checkset=False)
+current_speed=50
+arm = XArmAPI(XARM_IP, baud_checkset=False)
 robot_init(arm)
 current_step = 0
 current_episode = 1
 human_distance = 400
 last_measurements = [400,400,400]
-input("Press Enter to continue...")
-start_time = time()
-two_down_move_timer = time()
 executed_two = False
-is_playing = True
+total_iterations = 0
 played_adaptive = False
 played_regular = False
-total_iterations = 0
-## Initialize Cam
 
+
+# Start program and timers as soon as Enter is pressed
+input("Press Enter to continue...")
+# Timer for episode 1
+start_time = time()
+# Timer for episode 2
+two_down_move_timer = time()
+
+## Initialize Cam
 CONSIDER_ROBOT_POSITION = True
 CAMERA_OFFSET = 600  # mm the camera is offset from the robot
 ROBOT_POSITION_REQUEST_OFFSET = (
@@ -241,9 +252,9 @@ print(f"\tConfiguration Successful for SN {device}")
 # ====== Get and process images ======
 print(f"Starting to capture images on SN: {device}")
 
+# Create participant nr in order to create new file to save data in
 participant_nr = randrange(100000)
 
-processed_images = 0
 with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
     writer = csv.writer(f)
     writer.writerow(["Time", "Distance", "Average Distance", "Episode", "Step", "Speed", "X", "Y", "Z", "Pitch", "Yaw", "Roll", "is adaptive?"])
@@ -283,24 +294,17 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
                 print("Average: ", human_distance)
                 print("array: ", last_measurements)
             
-            # print(time()-start_time)
-
-            # Different timer for adaptive and non-adaptive
-            episode_one_timer = 17
-            if adaptive:
-                episode_one_timer = 17
-            if time()-start_time < episode_one_timer:
+            # Check if episode 1 timer has elapsed and go to episode 2 if necessary
+            if time()-start_time < EPISODE_ONE_TIMER:
                 current_episode = 1
             elif executed_two == False:
                 print("Moving to step two")
                 two_down_move_timer = time()
                 executed_two = True
-                # arm.set_state(4)
-                # arm.set_state(0)
                 current_episode = 2
                 current_step = 0
             
-            # Adjust speed
+            # Adjust speed based on distance and adaptiveness
             if not adaptive:
                 current_speed = MAX_SPEED
             elif human_distance < 300:
@@ -312,9 +316,12 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
             else:
                 current_speed = MAX_SPEED
             
+            # Move robot if the robot is stationary
             if arm.get_is_moving() == False:
                 current_step += 1
                 print("Executing episode ", current_episode, ", step ", current_step)
+
+                # Proceed to episode 2 if episode 1 is completed
                 if current_episode == 1:
                     if execute_episode_one_step(arm, current_step, current_speed) == False:
                         current_episode = 2
@@ -322,14 +329,12 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
                 elif current_episode == 2:
                     if human_distance > 450 and current_step == 4:
                         current_step = 5
-                    # Check if x seconds have elapsed since ending episode 1
-                    print(time()-two_down_move_timer)
+                    # Check if enough seconds have elapsed since starting episode 2.
+                    # Grab item and proceed to next episode if timer elapsed
                     if current_step == 6:
-                        episode_two_timer = 18
-                        if adaptive:
-                            episode_two_timer = 18
-                        if time()-two_down_move_timer > episode_two_timer:
+                        if time()-two_down_move_timer > EPISODE_TWO_TIMER:
                             execute_episode_two_step(arm, current_step, current_speed)
+                            # Execute episode 3b (4) if the user is less that 40 cm away from the robot. Execute episode 3a (3) otherwise.
                             if human_distance < 400 and adaptive:
                                 current_episode = 4
                             else:
@@ -337,19 +342,23 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
                             current_step = 0
                         else:
                             current_step = 5
+                    # Failsafe if the episode 2 somehow reaches step 7
                     elif (execute_episode_two_step(arm, current_step, current_speed) == False) and (current_step != 6):
                         if human_distance < 400:
                             current_episode = 4
                         else:
                             current_episode = 3
                         current_step = 0
+                # Execute episode 3a (3) and loop back to episode 1 if needed
                 elif current_episode == 3:
                     if execute_episode_three_a_step(arm, current_step, current_speed) == False:
-                        if not is_playing:
+                        if not IS_PLAYING:
+                            # After finishing episode 3a, iterate variables and break if enough cycles have been executed.
                             iterations += 1
                             total_iterations += 1
                             if total_iterations >= 2*CONSECUTIVE_ITERATIONS:
                                 break
+                            # Wait for the user to press Enter before restarting the program at episode 1
                             print("Pressy Enter to continue...")
                             while True:
                                 sleep(0.1)
@@ -357,22 +366,27 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
                                     # Key was pressed
                                     break
                                 current_pos = arm.get_position(is_radian=False)[1]
+                                # Fill csv file with zero values while robot is stationary
                                 writer.writerow([time(), estimated_distance, human_distance, 0, 0, 0, current_pos[0], current_pos[1], current_pos[2], current_pos[3], current_pos[4], current_pos[5], adaptive])
+                            # Switch between adaptive and non-adaptive
                             if iterations >= CONSECUTIVE_ITERATIONS:
                                 adaptive = not adaptive
                                 iterations = 0
+                        # Reset variables and timers needed for previous episodes
                         start_time = time()
                         executed_two = False
                         current_step = 0
                         current_episode = 1
-                        # exit()
+                # Execute episode 3b (4) and loop back to episode 1 if needed
                 elif current_episode == 4:
                     if execute_episode_three_b_step(arm, current_step, current_speed) == False:
-                        if not is_playing:
+                        if not IS_PLAYING:
+                            # After finishing episode 3b, iterate variables and break if enough cycles have been executed.
                             iterations += 1
                             total_iterations += 1
                             if total_iterations >= 2*CONSECUTIVE_ITERATIONS:
                                 break
+                            # Wait for the user to press Enter before restarting the program at episode 1
                             print("Press Enter to continue...")
                             while True:
                                 sleep(0.1)
@@ -380,14 +394,17 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
                                     # Key was pressed
                                     break
                                 current_pos = arm.get_position(is_radian=False)[1]
+                                # Fill csv file with zero values while robot is stationary
                                 writer.writerow([time(), estimated_distance, human_distance, 0, 0, 0, current_pos[0], current_pos[1], current_pos[2], current_pos[3], current_pos[4], current_pos[5], adaptive])
                             if iterations >= CONSECUTIVE_ITERATIONS:
                                 adaptive = not adaptive
                                 iterations = 0
+                        # Reset variables and timers needed for previous episodes
                         start_time = time()
                         executed_two = False
                         current_step = 0
                         current_episode = 1
+            # Adjust steps of certain episodes after adjusting the robot to the human in order to make the experience smoother and prevent hiccups
             if adjust_to_human(arm,human_distance):
                 if current_episode == 3 and current_step == 2:
                     current_step = current_step
@@ -399,9 +416,11 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
                     current_step = 3
                 else:
                     current_step -= 1
+            # Press the q button at any time to exit the program
             if keyboard.is_pressed("q"):
                 # Key was pressed
                 break
+            # Press the p button at any time during the playing phase in order to proceed
             if keyboard.is_pressed("p"):
                 # Key was pressed
                 if adaptive:
@@ -413,6 +432,7 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
                             # Key was pressed
                             break
                         current_pos = arm.get_position(is_radian=False)[1]
+                        # Fill csv file with zero values while robot is stationary
                         writer.writerow([time(), estimated_distance, human_distance, 0, 0, 0, current_pos[0], current_pos[1], current_pos[2], current_pos[3], current_pos[4], current_pos[5], adaptive])
                 else:
                     played_regular = True
@@ -423,12 +443,15 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
                             # Key was pressed
                             break
                         current_pos = arm.get_position(is_radian=False)[1]
+                        # Fill csv file with zero values while robot is stationary
                         writer.writerow([time(), estimated_distance, human_distance, 0, 0, 0, current_pos[0], current_pos[1], current_pos[2], current_pos[3], current_pos[4], current_pos[5], adaptive])
+                # If the user has played with both the non-adaptive and the adaptive robot, proceed to real experiment
                 if played_regular and played_adaptive:
                     adaptive = not adaptive
-                    is_playing = False
+                    IS_PLAYING = False
                     execute_episode_one_step(arm, 1, current_speed)
                     sleep(3)
+                    # Press Enter to start the first cycle of the experiment
                     print("Press Enter to continue...")
                     while True:
                         sleep(0.1)
@@ -436,7 +459,9 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
                             # Key was pressed
                             break
                         current_pos = arm.get_position(is_radian=False)[1]
+                        # Fill csv file with zero values while robot is stationary
                         writer.writerow([time(), estimated_distance, human_distance, 0, 0, 0, current_pos[0], current_pos[1], current_pos[2], current_pos[3], current_pos[4], current_pos[5], adaptive])
+                    # Reset variables
                     start_time = time()
                     executed_two = False
                     current_step = 0
@@ -445,5 +470,6 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
                     adaptive = not adaptive
             current_pos = arm.get_position(is_radian=False)[1]
             if current_step != 0:
+                # Write data in participant's csv file
                 writer.writerow([time(), estimated_distance, human_distance, current_episode, current_step, current_speed, current_pos[0], current_pos[1], current_pos[2], current_pos[3], current_pos[4], current_pos[5], adaptive])
         
