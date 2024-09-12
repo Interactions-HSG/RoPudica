@@ -124,7 +124,7 @@ def execute_episode_three_a_step(arm, step, speed):
     return True
 
 
-# Move gripper back and drop an object in the box. Also known as episode 4 and is only executed if the user is < 40 cm away from the robot.
+# Move gripper back and drop an object in the box. Also known as episode 3b (4) and is only executed if the user is < 40 cm away from the robot.
 # Moves adaptively and very closely to the robot's centre point in order to avoid swinging and colliding the user.
 # Returns True if the current episode is still running and returns false as soon as all steps have been completed.
 def execute_episode_three_b_step(arm, step, speed):
@@ -142,12 +142,6 @@ def execute_episode_three_b_step(arm, step, speed):
     else:
         return False
     return True
-
-def new_iteration():
-    iterations += 1
-    if iterations >= 0:
-        adaptive = not adaptive
-        iterations = 0
         
 # Initialize parameters with default values
 iterations = 0
@@ -178,6 +172,7 @@ ROBOT_POSITION_REQUEST_OFFSET = (
     1  # Number of frames to wait before requesting robot position
 )
 
+# Return distance from depth camera
 def get_landmark_distance(results, landmark_index):
     landmark = results.pose_landmarks.landmark[landmark_index]
     x = int(landmark.x * len(depth_image_flipped[0]))
@@ -188,6 +183,7 @@ def get_landmark_distance(results, landmark_index):
         y = len(depth_image_flipped) - 1
     return depth_image_flipped[y, x] * depth_scale
 
+# Returns average distance of the users two shoulders
 def process_proxemics(results):
     lShoulder_distance = get_landmark_distance(results, 11)
     rShoulder_distance = get_landmark_distance(results, 12)
@@ -197,13 +193,6 @@ def process_proxemics(results):
     operator_distance = operator_distance * 1000  # convert to mm
 
     return operator_distance - CAMERA_OFFSET
-
-
-font = cv2.FONT_HERSHEY_SIMPLEX
-org = (20, 100)
-fontScale = 0.5
-color = (0, 50, 255)
-thickness = 1
 
 # ====== Realsense ======
 realsense_ctx = rs.context()
@@ -224,6 +213,7 @@ mp_holistic = mp.solutions.holistic  # Mediapipe Solutions
 # ====== Enable Streams ======
 config.enable_device(device)
 
+# Set properties of camera
 stream_res_x = 640
 stream_res_y = 480
 stream_fps = 30
@@ -255,6 +245,7 @@ print(f"Starting to capture images on SN: {device}")
 # Create participant nr in order to create new file to save data in
 participant_nr = randrange(100000)
 
+# Main method
 with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
     writer = csv.writer(f)
     writer.writerow(["Time", "Distance", "Average Distance", "Episode", "Step", "Speed", "X", "Y", "Z", "Pitch", "Yaw", "Roll", "is adaptive?"])
@@ -445,13 +436,13 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
                         current_pos = arm.get_position(is_radian=False)[1]
                         # Fill csv file with zero values while robot is stationary
                         writer.writerow([time(), estimated_distance, human_distance, 0, 0, 0, current_pos[0], current_pos[1], current_pos[2], current_pos[3], current_pos[4], current_pos[5], adaptive])
-                # If the user has played with both the non-adaptive and the adaptive robot, proceed to real experiment
+                # If the user has played with both the non-adaptive and the adaptive robot, proceed to assembly part of the experiment
                 if played_regular and played_adaptive:
                     adaptive = not adaptive
                     IS_PLAYING = False
                     execute_episode_one_step(arm, 1, current_speed)
                     sleep(3)
-                    # Press Enter to start the first cycle of the experiment
+                    # Press Enter to start assembly 1 of the experiment
                     print("Press Enter to continue...")
                     while True:
                         sleep(0.1)
@@ -461,7 +452,7 @@ with open(str(participant_nr)+'_data.csv', 'a', newline='') as f:
                         current_pos = arm.get_position(is_radian=False)[1]
                         # Fill csv file with zero values while robot is stationary
                         writer.writerow([time(), estimated_distance, human_distance, 0, 0, 0, current_pos[0], current_pos[1], current_pos[2], current_pos[3], current_pos[4], current_pos[5], adaptive])
-                    # Reset variables
+                    # Reset variables when restarting from episode 1
                     start_time = time()
                     executed_two = False
                     current_step = 0
